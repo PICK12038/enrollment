@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>学员报名登记表 · 姜浩张超画室</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script>
+// ═══════════ 版本控制：防微信缓存 ═══════════
+const VERSION='2026-06-03-001';
+const savedVer=localStorage.getItem('enrollment_version');
+if(savedVer&&savedVer!==VERSION){
+  localStorage.setItem('enrollment_version',VERSION);
+  location.reload(true);
+}else{localStorage.setItem('enrollment_version',VERSION)}
+</script>
 <style>
 :root{--bg:#F5F5F5;--white:#FFF;--text:#1F2937;--text2:#6B7280;--text3:#9CA3AF;--border:#E5E7EB;--brand:#1F2937;--blue:#2563EB;--red:#DC2626;--green:#059669}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -299,7 +308,14 @@ function loadDraft(){
 function clearDraft(){localStorage.removeItem(DRAFT_KEY)}
 document.getElementById('enrollmentForm').addEventListener('input',saveDraft);
 window.addEventListener('beforeunload',function(e){const f=document.getElementById('enrollmentForm');const a=Array.from(f.querySelectorAll('input[type=text],input[type=tel],textarea,select')).some(el=>el.value.trim());if(a){e.preventDefault();e.returnValue=''}});
-if(loadDraft())toast('已恢复上次填写的内容');
+if(loadDraft())toast('已恢复上次填写的内容')
+
+// iOS 键盘弹出自动滚动到输入框
+document.querySelectorAll('input,textarea,select').forEach(el=>{
+  el.addEventListener('focus',function(){
+    setTimeout(()=>this.scrollIntoView({behavior:'smooth',block:'center'}),300)
+  })
+});
 
 async function handleSubmit(e){
   e.preventDefault();
