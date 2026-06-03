@@ -208,7 +208,8 @@ table.admin-table tbody tr:hover{background:#F9FAFB}
 <div class="stat"><div class="label">全能班</div><div class="value" id="statQN">0</div></div>
 </div>
 <div class="toolbar">
-<input type="text" id="searchInput" placeholder="搜索姓名/身份证/学校/城市..." oninput="loadRecords()">
+<input type="text" id="searchInput" placeholder="搜索姓名/身份证/学校/城市/电话..." oninput="debounceSearch()">
+<input type="text" id="searchExtra" placeholder="附加搜索（空格分隔多个关键词）" oninput="debounceSearch()" style="width:200px">
 <select id="classFilter" onchange="loadRecords()"><option value="">全部班型</option><option value="VIP">VIP</option><option value="港澳台">港澳台</option><option value="定制班">定制班</option><option value="清央国">清央国</option><option value="超能班">超能班</option><option value="超重班">超重班</option><option value="全能班">全能班</option></select>
 <span class="spacer"></span>
 <span class="count" id="recordCount">共 0 条</span>
@@ -362,14 +363,27 @@ function updateClock(){
   document.getElementById('liveTime').textContent=now.toLocaleString('zh-CN',{hour12:false});
 }
 
+// ═══════════ 搜索防抖 + 增强搜索 ═══════════
+let searchTimer=null;
+function debounceSearch(){clearTimeout(searchTimer);searchTimer=setTimeout(loadRecords,300)}
 async function loadRecords(){
   try{
     const q=document.getElementById('searchInput').value.trim();
+    const qx=document.getElementById('searchExtra').value.trim();
     const cf=document.getElementById('classFilter').value;
     let url=SB_URL+'/rest/v1/enroll_record?select=*&order=created_at.desc&limit=500';
     let filters=[];
     if(cf) filters.push(`class_type=eq.${encodeURIComponent(cf)}`);
-    if(q){const v=encodeURIComponent(q);filters.push(`or=(name.ilike.*${v}*,id_card.ilike.*${v}*,high_school.ilike.*${v}*,city.ilike.*${v}*)`);}
+    const keywords=[];
+    if(q) keywords.push(q);
+    if(qx) qx.split(/\s+/).forEach(k=>{if(k)keywords.push(k)});
+    if(keywords.length){
+      const orParts=keywords.map(k=>{
+        const v=encodeURIComponent(k);
+        return `or=(name.ilike.*${v}*,id_card.ilike.*${v}*,high_school.ilike.*${v}*,city.ilike.*${v}*,phone.ilike.*${v}*,father_name.ilike.*${v}*,mother_name.ilike.*${v}*,dorm_room.ilike.*${v}*)`;
+      });
+      filters.push(orParts.join(','));
+    }
     if(filters.length) url+='&'+filters.join('&');
 
     const r=await fetch(url,{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
@@ -396,7 +410,7 @@ function renderTable(){
   document.getElementById('recordCount').textContent='共 '+total+' 条';
 
   const thead=document.getElementById('tableHead');
-  thead.innerHTML='<tr>'+TABLE_CN.map(c=>'<th>'+c+'</th>').join('')+'</tr>';
+  thead.innerHTML='<tr>'+TABLE_CN.map(c=>'<th>'+c+'</th>').join('')+'<th>操作</th></tr>';
   const tbody=document.getElementById('tableBody');
   const empty=document.getElementById('emptyState');
   if(total===0){tbody.innerHTML='';empty.style.display='block';document.getElementById('pager').innerHTML='';return}
@@ -412,7 +426,7 @@ function renderTable(){
       const cnMap={name:'姓名',gender:'性别',birthday:'出生年月',class_type:'班型',high_school:'高中',city:'城市',phone:'学生电话',id_card:'身份证号',dorm_type:'宿舍房型',dorm_room:'房间号',father_phone:'父亲电话',mother_phone:'母亲电话',culture_score:'文化成绩',repeat_score:'复读分'};
       const e=errCols[cnMap[c]];
       return '<td'+(e?' class="error-cell" data-err="'+escAttr(e)+'"':'')+'>'+esc(r[c])+(e?'<span class="error-tag">!</span>':'')+'</td>';
-    }).join('')+'</tr>';
+    }).join('')+'<td><button onclick="deleteOne('+r.id+')" style="color:var(--red);font-size:11px;padding:2px 8px;border:1px solid var(--red);border-radius:4px;background:#fff;cursor:pointer">删除</button></td>'+'</tr>';
   }).join('');
 
   const pages=Math.ceil(total/PER_PAGE);
@@ -462,6 +476,22 @@ function exportJSON(){
   logHistory('备份JSON','备份 '+allRecords.length+' 条记录');
 }
 
+async function deleteOne(id){
+  if(!confirm('确定删除这条记录吗？将移到回收站保留180天。'))return;
+  try{
+    const r=allRecords.find(x=>x.id===id);
+    if(!r)return;
+    const now=new Date().toISOString();
+    const expired=new Date(Date.now()+180*86400000).toISOString();
+    const trash=getTrash();
+    trash.push({...r,_deleted_at:now,_expires_at:expired});
+    saveTrash(trash);
+    await fetch(SB_URL+'/rest/v1/enroll_record?id=eq.'+id,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+    allRecords=allRecords.filter(x=>x.id!==id);
+    renderTable();toast('已移到回收站');
+    logHistory('删除记录','删除 '+r.name);
+  }catch(e){toast('删除失败')}
+}
 async function clearAll(){
   if(!confirm('确定清空全部登记数据吗？数据将移到回收站保留180天。'))return;
   try{
