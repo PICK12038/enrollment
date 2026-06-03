@@ -254,7 +254,36 @@ route();
 function esc(s){const d=document.createElement('div');d.textContent=s||'-';return d.innerHTML}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._tid);t._tid=setTimeout(()=>t.classList.remove('show'),2500)}
 function toggleConfirm(){const c=document.getElementById('confirmCheck');const s=document.getElementById('confirmSection');const f=document.getElementById('confirmFields');const d=document.getElementById('confirmDate');if(c.checked){s.classList.add('confirmed');f.classList.add('open');d.required=true}else{s.classList.remove('confirmed');f.classList.remove('open');d.required=false}}
-function closeResult(){document.getElementById('overlay').classList.remove('show');document.getElementById('enrollmentForm').reset();toggleConfirm();document.getElementById('confirmCheck').checked=false}
+function closeResult(){document.getElementById('overlay').classList.remove('show');document.getElementById('enrollmentForm').reset();toggleConfirm();document.getElementById('confirmCheck').checked=false;clearDraft()}
+
+// 表单防丢：自动暂存 + 关闭提醒
+const DRAFT_KEY='enrollment_draft';
+function saveDraft(){
+  const fd=new FormData(document.getElementById('enrollmentForm'));
+  const d={};fd.forEach((v,k)=>{d[k]=v});
+  const cbs=document.querySelectorAll('input[name="study_duration"]:checked');
+  d._sd=Array.from(cbs).map(c=>c.value);
+  d._ck=document.getElementById('confirmCheck').checked;
+  localStorage.setItem(DRAFT_KEY,JSON.stringify(d));
+}
+function loadDraft(){
+  try{
+    const d=JSON.parse(localStorage.getItem(DRAFT_KEY)||'null');
+    if(!d)return false;
+    Object.keys(d).filter(k=>!k.startsWith('_')).forEach(k=>{
+      const el=document.querySelector('[name="'+k.replace(/"/g,'\\"')+'"]');
+      if(!el||el.type==='checkbox')return;
+      el.value=d[k]||'';
+    });
+    (d._sd||[]).forEach(v=>{const cb=document.querySelector('input[name="study_duration"][value="'+v.replace(/"/g,'&quot;')+'"]');if(cb)cb.checked=true});
+    if(d._ck){document.getElementById('confirmCheck').checked=true;toggleConfirm()}
+    return true;
+  }catch(e){return false}
+}
+function clearDraft(){localStorage.removeItem(DRAFT_KEY)}
+document.getElementById('enrollmentForm').addEventListener('input',saveDraft);
+window.addEventListener('beforeunload',function(e){const f=document.getElementById('enrollmentForm');const a=Array.from(f.querySelectorAll('input[type=text],input[type=tel],textarea,select')).some(el=>el.value.trim());if(a){e.preventDefault();e.returnValue=''}});
+if(loadDraft())toast('已恢复上次填写的内容');
 
 async function handleSubmit(e){
   e.preventDefault();
@@ -281,6 +310,7 @@ async function handleSubmit(e){
   let html='';FIELDS.forEach(([l,k])=>{html+=`<tr><td>${l}</td><td>${esc(data[k])}</td></tr>`});
   document.getElementById('resultTable').innerHTML=html;
   document.getElementById('overlay').classList.add('show');
+  clearDraft();
   btn.disabled=false;btn.textContent='提交登记';
   return false;
 }
