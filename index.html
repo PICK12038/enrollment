@@ -112,6 +112,10 @@ table.admin-table tbody tr:hover{background:#F9FAFB}
 .error-cell{background:#FFF5F5!important;position:relative}
 .error-cell::after{content:attr(data-err);position:absolute;top:-28px;left:0;background:var(--red);color:#fff;font-size:10px;padding:3px 6px;border-radius:4px;white-space:nowrap;z-index:10;opacity:0;pointer-events:none;transition:opacity .15s}
 .error-cell:hover::after{opacity:1}
+.check-stats{display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.check-stats .stat{padding:8px 12px}
+.check-stats .stat .value{font-size:18px}
+.sev-severe{color:#DC2626;font-weight:700}.sev-warn{color:#D97706;font-weight:600}.sev-info{color:#2563EB}
 @media(max-width:768px){.sidebar{display:none}.stats{grid-template-columns:repeat(3,1fr)}}
 </style>
 </head>
@@ -209,8 +213,19 @@ table.admin-table tbody tr:hover{background:#F9FAFB}
 </div>
 <!-- 数据校验面板 -->
 <div class="panel" id="panelCheck">
-<div class="toolbar"><span class="count" id="checkCount">共 0 条待校验</span><span class="spacer"></span><button class="primary" onclick="runValidation()">执行校验</button></div>
-<div class="table-wrap"><table class="admin-table"><thead><tr><th>姓名</th><th>身份证号</th><th>学生电话</th><th>父亲电话</th><th>母亲电话</th><th>出生日期</th><th>问题</th></tr></thead><tbody id="checkBody"></tbody></table><div class="empty-state" id="checkEmpty">暂无数据，点击"执行校验"开始</div></div>
+<div class="toolbar">
+  <span class="count" id="checkCount">点击"执行校验"开始扫描</span>
+  <span class="spacer"></span>
+  <button onclick="runValidation()">&#x1F50D; 执行校验</button>
+  <button onclick="exportCheck()">&#x1F4E5; 导出报告</button>
+</div>
+<div class="check-stats" id="checkStats" style="display:none;display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+  <div class="stat" style="flex:1;min-width:80px;border-color:#FCA5A5;background:#FEF2F2"><div class="label" style="color:#DC2626">严重问题</div><div class="value" id="statSevere" style="color:#DC2626">0</div></div>
+  <div class="stat" style="flex:1;min-width:80px;border-color:#FCD34D;background:#FFFBEB"><div class="label" style="color:#D97706">警告</div><div class="value" id="statWarn" style="color:#D97706">0</div></div>
+  <div class="stat" style="flex:1;min-width:80px;border-color:#93C5FD;background:#EFF6FF"><div class="label" style="color:#2563EB">提示</div><div class="value" id="statInfo" style="color:#2563EB">0</div></div>
+  <div class="stat" style="flex:1;min-width:80px"><div class="label">正常</div><div class="value" id="statGood" style="color:#059669">0</div></div>
+</div>
+<div class="table-wrap"><table class="admin-table"><thead><tr><th>姓名</th><th>班级</th><th>问题字段</th><th>严重度</th><th>当前值</th><th>建议</th></tr></thead><tbody id="checkBody"></tbody></table><div class="empty-state" id="checkEmpty">暂无数据，点击"执行校验"开始</div></div>
 </div>
 <!-- 回收站面板 -->
 <div class="panel" id="panelTrash">
@@ -252,6 +267,7 @@ route();
 
 // ═══════════ 学生端 ═══════════
 function esc(s){const d=document.createElement('div');d.textContent=s||'-';return d.innerHTML}
+function escAttr(s){return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._tid);t._tid=setTimeout(()=>t.classList.remove('show'),2500)}
 function toggleConfirm(){const c=document.getElementById('confirmCheck');const s=document.getElementById('confirmSection');const f=document.getElementById('confirmFields');const d=document.getElementById('confirmDate');if(c.checked){s.classList.add('confirmed');f.classList.add('open');d.required=true}else{s.classList.remove('confirmed');f.classList.remove('open');d.required=false}}
 function closeResult(){document.getElementById('overlay').classList.remove('show');document.getElementById('enrollmentForm').reset();toggleConfirm();document.getElementById('confirmCheck').checked=false;clearDraft()}
@@ -375,9 +391,11 @@ function renderTable(){
   const pageData=allRecords.slice(start,start+PER_PAGE);
   tbody.innerHTML=pageData.map(r=>{
     const errs=validateRecord(r);
+    const errCols={};errs.forEach(e=>{if(!errCols[e.field])errCols[e.field]=e.msg});
     return '<tr>'+TABLE_COLS.map(c=>{
-      const e=errs.find(e=>e.col===c);
-      return '<td'+(e?' class="error-cell" data-err="'+escAttr(e.msg)+'"':'')+'>'+esc(r[c])+(e?'<span class="error-tag">!</span>':'')+'</td>';
+      const cnMap={name:'姓名',gender:'性别',birthday:'出生年月',class_type:'班型',high_school:'高中',city:'城市',phone:'学生电话',id_card:'身份证号',dorm_type:'宿舍房型',dorm_room:'房间号',father_phone:'父亲电话',mother_phone:'母亲电话',culture_score:'文化成绩',repeat_score:'复读分'};
+      const e=errCols[cnMap[c]];
+      return '<td'+(e?' class="error-cell" data-err="'+escAttr(e)+'"':'')+'>'+esc(r[c])+(e?'<span class="error-tag">!</span>':'')+'</td>';
     }).join('')+'</tr>';
   }).join('');
 
@@ -457,33 +475,144 @@ function switchPanel(name){
 }
 function renderCheck(){document.getElementById('checkEmpty').style.display='block';document.getElementById('checkBody').innerHTML='';}
 
-// ═══════════ 数据校验 ═══════════
+// ═══════════ 智能数据校验 ═══════════
 function validateRecord(r){
   const errs=[];
-  const id=r.id_card||'';
-  const phone=r.phone||'';
-  const fphone=r.father_phone||'';
-  const mphone=r.mother_phone||'';
-  const birthday=r.birthday||'';
-  if(id&&!/^\d{17}[\dXx]$/.test(id)) errs.push({col:'id_card',msg:'身份证格式错误'});
-  if(phone&&!/^1\d{10}$/.test(phone)) errs.push({col:'phone',msg:'手机号应为11位'});
-  if(fphone&&!/^1\d{10}$/.test(fphone)) errs.push({col:'father_phone',msg:'父亲电话格式错误'});
-  if(mphone&&!/^1\d{10}$/.test(mphone)) errs.push({col:'mother_phone',msg:'母亲电话格式错误'});
-  if(birthday&&!/^\d{4}[年.\-\/]\d{1,2}/.test(birthday)&&!/^\d{6,8}$/.test(birthday.replace(/\s/g,''))) errs.push({col:'birthday',msg:'出生日期格式不对'});
+  const id=(r.id_card||'').trim();
+  const phone=(r.phone||'').trim();
+  const fphone=(r.father_phone||'').trim();
+  const mphone=(r.mother_phone||'').trim();
+  const birthday=(r.birthday||'').trim();
+  const name=(r.name||'').trim();
+  const school=(r.high_school||'').trim();
+  const score=(r.culture_score||'').trim();
+  const rScore=(r.repeat_score||'').trim();
+
+  const VALID_CLASSES=['VIP','港澳台','定制班','清央国','超能班','超重班','全能班'];
+  const VALID_DORMS=['2人间','4人间','6人间','8人间'];
+  const VALID_GENDER=['男','女'];
+  const MOBILE_PREFIX=/^1[3-9]\d{9}$/;
+  const LANDLINE_PREFIX=/^0\d{2,3}-?\d{7,8}$/;
+
+  // 身份证校验（18位+校验位）
+  if(id){
+    if(id.length===18){
+      const w=[7,9,10,5,8,4,2,1,6,3,7,9,10,5,8,4,2];
+      const chk='10X98765432';
+      let sum=0;
+      for(let i=0;i<17;i++){if(/\d/.test(id[i]))sum+=parseInt(id[i])*w[i];else{errs.push({sev:2,field:'身份证号',msg:'第'+(i+1)+'位应为数字',val:id});break}}
+      if(sum&&chk[sum%11]!==id[17].toUpperCase())errs.push({sev:2,field:'身份证号',msg:'校验位不正确（可能是手误）',val:id});
+      const by=parseInt(id.substring(6,10)),bm=parseInt(id.substring(10,12)),bd=parseInt(id.substring(12,14));
+      if(by<2003||by>2012)errs.push({sev:1,field:'身份证号',msg:'出生年份'+by+'年，美术生通常在2004-2011年',val:id});
+    }else if(id.length===15){
+      errs.push({sev:1,field:'身份证号',msg:'15位旧版身份证，建议更新为18位',val:id});
+    }else{
+      errs.push({sev:2,field:'身份证号',msg:'应为18位数字（末位可能X）',val:id});
+    }
+  }
+
+  // 手机号校验
+  const checkPhone=(num,label)=>{
+    if(!num)return;
+    if(!MOBILE_PREFIX.test(num)&&!LANDLINE_PREFIX.test(num)){
+      if(num.length!==11||!/^\d+$/.test(num))errs.push({sev:2,field:label,msg:'长度应为11位数字',val:num});
+      else if(!/^1[3-9]/.test(num))errs.push({sev:1,field:label,msg:'前2位不是有效手机号段(13-19)',val:num});
+      else errs.push({sev:1,field:label,msg:'格式疑有问题',val:num});
+    }
+  };
+  checkPhone(phone,'学生电话');
+  checkPhone(fphone,'父亲电话');
+  checkPhone(mphone,'母亲电话');
+
+  // 出生日期
+  if(birthday){
+    let m=birthday.match(/(\d{4})[年.\-\/](\d{1,2})/);
+    if(m){
+      const y=parseInt(m[1]),mo=parseInt(m[2]);
+      if(y<2003||y>2012)errs.push({sev:1,field:'出生日期',msg:'年份'+y+'年偏离美术生常见范围(2004-2011)',val:birthday});
+      if(mo<1||mo>12)errs.push({sev:2,field:'出生日期',msg:'月份'+mo+'超出1-12范围',val:birthday});
+    }else{
+      const raw=birthday.replace(/\s/g,'');
+      if(/^\d{6,8}$/.test(raw)){
+        const y=parseInt(raw.substring(0,4));
+        if(y<2003||y>2012)errs.push({sev:1,field:'出生日期',msg:'纯数字格式，建议加分隔符（如2008/6）',val:birthday});
+      }else{
+        errs.push({sev:2,field:'出生日期',msg:'无法识别格式，建议用"2008年6月"或"2008/6"',val:birthday});
+      }
+    }
+  }
+
+  // 姓名
+  if(name&&name.length<2)errs.push({sev:2,field:'姓名',msg:'姓名至少2个字符',val:name});
+  if(name&&/[a-zA-Z0-9]/.test(name))errs.push({sev:1,field:'姓名',msg:'包含英文或数字',val:name});
+
+  // 性别
+  if(r.gender&&!VALID_GENDER.includes(r.gender))errs.push({sev:2,field:'性别',msg:'应为"男"或"女"',val:r.gender||''});
+
+  // 班型
+  if(r.class_type&&!VALID_CLASSES.includes(r.class_type))errs.push({sev:2,field:'班型',msg:'不是有效班型',val:r.class_type||''});
+
+  // 宿舍
+  if(r.dorm_type&&!VALID_DORMS.includes(r.dorm_type))errs.push({sev:2,field:'宿舍房型',msg:'不是有效房型',val:r.dorm_type||''});
+
+  // 高中
+  if(school&&school.length<4)errs.push({sev:1,field:'高中名称',msg:'名称过短（可能不是全称）',val:school});
+  if(school&&!/[中学学校附中]/.test(school))errs.push({sev:1,field:'高中名称',msg:'未包含"中学/学校/附中"关键词',val:school});
+
+  // 文化分数
+  if(score){
+    const sc=parseInt(score);
+    if(isNaN(sc))errs.push({sev:1,field:'文化成绩',msg:'不是数字，建议填分数区间如350-400',val:score});
+    else if(sc<100||sc>750)errs.push({sev:1,field:'文化成绩',msg:'分数'+sc+'偏离合理范围(100-750)',val:score});
+  }
+
+  // 复读分数
+  if(rScore){
+    const rs=parseInt(rScore);
+    if(isNaN(rs))errs.push({sev:1,field:'复读分数',msg:'不是数字',val:rScore});
+    else if(rs<100||rs>300)errs.push({sev:1,field:'复读分数',msg:'联考分'+rs+'偏离合理范围(100-300)',val:rScore});
+  }
+
   return errs;
 }
-function escAttr(s){return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
+
+function getSevLabel(sev){return sev===2?'<span class="sev-severe">严重</span>':sev===1?'<span class="sev-warn">警告</span>':'<span class="sev-info">提示</span>'}
+
 function runValidation(){
-  const rows=allRecords.map(r=>({name:r.name,id_card:r.id_card,phone:r.phone,father_phone:r.father_phone,mother_phone:r.mother_phone,birthday:r.birthday,errs:validateRecord(r)}));
-  const errRecords=rows.filter(r=>r.errs.length);
-  document.getElementById('checkCount').textContent='共 '+errRecords.length+' 条问题';
+  const allIssues=[];
+  allRecords.forEach(r=>{
+    const errs=validateRecord(r);
+    errs.forEach(e=>allIssues.push({name:r.name,class_type:r.class_type,...e}));
+  });
+  const severe=allIssues.filter(e=>e.sev===2).length;
+  const warn=allIssues.filter(e=>e.sev===1).length;
+  const info=allIssues.filter(e=>e.sev===0).length;
+  const good=allRecords.length-allIssues.filter((e,i,a)=>a.findIndex(x=>x.name===e.name)===i).length;
+
+  document.getElementById('checkCount').textContent='共 '+allIssues.length+' 条问题（'+allRecords.length+' 条记录）';
+  document.getElementById('statSevere').textContent=severe;
+  document.getElementById('statWarn').textContent=warn;
+  document.getElementById('statInfo').textContent=info;
+  document.getElementById('statGood').textContent=good;
+  document.getElementById('checkStats').style.display='flex';
+
   const tbody=document.getElementById('checkBody');
   const empty=document.getElementById('checkEmpty');
-  if(errRecords.length===0){tbody.innerHTML='';empty.style.display='block';empty.textContent='✓ 全部通过校验';toast('数据校验通过');return}
+  if(allIssues.length===0){tbody.innerHTML='';empty.style.display='block';empty.textContent='✓ 全部通过校验，数据质量良好';toast('数据全部通过校验');return}
   empty.style.display='none';
-  tbody.innerHTML=errRecords.map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+esc(r.id_card)+'</td><td>'+esc(r.phone)+'</td><td>'+esc(r.father_phone)+'</td><td>'+esc(r.mother_phone)+'</td><td>'+esc(r.birthday)+'</td><td style="color:var(--red)">'+r.errs.map(e=>e.msg).join('；')+'</td></tr>').join('');
-  logHistory('数据校验','发现 '+errRecords.length+' 条问题');
-  toast('发现 '+errRecords.length+' 条数据有格式问题');
+  tbody.innerHTML=allIssues.map(e=>'<tr><td>'+esc(e.name)+'</td><td>'+esc(e.class_type||'')+'</td><td>'+esc(e.field)+'</td><td>'+getSevLabel(e.sev)+'</td><td style="color:var(--red);max-width:200px;overflow:hidden;text-overflow:ellipsis">'+esc(e.val)+'</td><td style="color:var(--text2)">'+esc(e.msg)+'</td></tr>').join('');
+  logHistory('数据校验','发现 '+severe+' 严重 '+warn+' 警告 '+info+' 提示');
+  toast('严重'+severe+' | 警告'+warn+' | 提示'+info);
+}
+
+function exportCheck(){
+  const allIssues=[];
+  allRecords.forEach(r=>{const errs=validateRecord(r);errs.forEach(e=>allIssues.push({姓名:r.name,班级:r.class_type||'',问题字段:e.field,严重度:e.sev===2?'严重':e.sev===1?'警告':'提示',当前值:e.val,建议:e.msg}))});
+  if(allIssues.length===0){alert('没有可导出的问题');return}
+  const ws=XLSX.utils.json_to_sheet(allIssues);
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'校验报告');
+  XLSX.writeFile(wb,'数据校验报告_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  logHistory('导出校验报告','导出 '+allIssues.length+' 条问题');
 }
 
 // ═══════════ 回收站 ═══════════
