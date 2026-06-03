@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>学员报名登记表 · 姜浩张超画室</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#F5F5F5;--white:#FFF;--text:#1F2937;--text2:#6B7280;--text3:#9CA3AF;--border:#E5E7EB;--brand:#1F2937;--blue:#2563EB;--red:#DC2626;--green:#059669}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#EEE;font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;color:var(--text);min-height:100vh;display:flex;justify-content:center}
+#studentApp,#adminApp{width:100%}
+/* ── 学生端 ── */
+.student-body{background:#EEE;padding:20px 0 60px;display:flex;justify-content:center}
+.container{width:100%;max-width:580px;background:var(--white);border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden}
+.header{padding:32px 32px 0}
+.header h1{font-size:22px;font-weight:700;margin-bottom:6px}
+.header .desc{font-size:13px;color:var(--text2);line-height:1.6}
+.header .divider{height:1px;background:var(--border);margin-top:20px}
+.section{padding:24px 32px;border-bottom:1px solid var(--border)}
+.section:last-of-type{border-bottom:none}
+.section-title{font-size:15px;font-weight:700;margin-bottom:4px}
+.section-desc{font-size:12px;color:var(--text3);margin-bottom:18px}
+.field-row{display:flex;gap:12px;margin-bottom:16px}
+.field-row:last-child{margin-bottom:0}
+.field{flex:1;display:flex;flex-direction:column;gap:4px;margin-bottom:16px}
+.field:last-child{margin-bottom:0}
+.field-row .field{margin-bottom:0}
+.field label{font-size:13px;font-weight:500}
+.field label .req{color:var(--red);margin-left:2px}
+.field label .opt{color:var(--text3);font-weight:400;margin-left:4px}
+.field .hint{font-size:11px;color:var(--text3);line-height:1.4;margin-top:2px}
+input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:inherit;color:var(--text);outline:none;transition:border-color .15s,box-shadow .15s;-webkit-appearance:none;background:var(--white)}
+input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+input::placeholder,textarea::placeholder{color:var(--text3)}
+select{cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+textarea{resize:vertical;min-height:80px;line-height:1.6}
+.pill-group{display:flex;flex-wrap:wrap;gap:8px}
+.pill{position:relative}
+.pill input{position:absolute;opacity:0;width:0;height:0}
+.pill label{display:block;padding:8px 14px;border:1px solid var(--border);border-radius:20px;font-size:13px;color:var(--text2);cursor:pointer;transition:all .15s;user-select:none;background:var(--white)}
+.pill input:checked+label{background:#EFF6FF;border-color:var(--blue);color:var(--blue);font-weight:500}
+.check-row{display:flex;align-items:flex-start;gap:10px}
+.check-row{display:flex;align-items:flex-start;gap:10px}
+.check-row input[type=checkbox]{position:absolute;opacity:0;width:0;height:0}
+.check-box{width:20px;height:20px;border:2px solid var(--border);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;background:var(--white);margin-top:1px}
+.check-row input:checked+.check-box{background:var(--blue);border-color:var(--blue)}
+.check-row input:checked+.check-box::after{content:'✓';color:#fff;font-size:13px;font-weight:700;line-height:1}
+.check-row label{font-size:13px;color:var(--text2);line-height:1.6;cursor:pointer;flex:1}
+.section.confirmed .check-row{background:#EFF6FF;margin:-8px -12px;padding:8px 12px;border-radius:8px}
+.section.confirmed .check-row label{color:var(--blue);font-weight:500}
+.confirm-fields{overflow:hidden;max-height:0;opacity:0;transition:all .3s ease}
+.confirm-fields.open{max-height:300px;opacity:1}
+.submit-area{padding:20px 32px 32px}
+.btn-submit{width:100%;padding:14px;border:none;border-radius:8px;background:var(--brand);color:#fff;font-size:15px;font-weight:600;cursor:pointer}
+.btn-submit:active{opacity:.85}
+.btn-submit:disabled{opacity:.5;cursor:not-allowed}
+.footer-text{text-align:center;font-size:12px;color:var(--text3);padding:0 0 32px}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;padding:24px}
+.overlay.show{opacity:1;pointer-events:auto}
+.result{background:var(--white);width:100%;max-width:440px;max-height:80vh;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.15)}
+.result-header{padding:24px 24px 16px;text-align:center}
+.result-header .check{width:44px;height:44px;border-radius:50%;background:#ECFDF5;color:#059669;display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 10px}
+.result-header h3{font-size:17px;font-weight:700}
+.result-header p{font-size:12px;color:var(--text2);margin-top:4px}
+.result-body{padding:0 24px 16px;overflow-y:auto;flex:1}
+.result-body table{width:100%;border-collapse:collapse;font-size:13px}
+.result-body td{padding:8px 0;border-bottom:1px solid #F3F4F6;vertical-align:top;line-height:1.5}
+.result-body td:first-child{width:90px;color:var(--text2);white-space:nowrap;padding-right:12px}
+.result-footer{padding:16px 24px;border-top:1px solid var(--border)}
+.result-footer button{width:100%;padding:11px;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;background:var(--brand);color:#fff;border:none}
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--brand);color:#fff;padding:10px 22px;border-radius:20px;font-size:13px;font-weight:500;z-index:200;transition:transform .3s cubic-bezier(.175,.885,.32,1.275)}
+.toast.show{transform:translateX(-50%) translateY(0)}
+@media(max-width:600px){.container{border-radius:0}.section{padding:20px 20px}.header{padding:24px 20px 0}.submit-area{padding:16px 20px 24px}}
+
+/* ── 管理后台 ── */
+.admin-body{background:var(--bg);min-height:100vh;display:flex}
+.sidebar{width:200px;background:var(--white);border-right:1px solid var(--border);padding:16px 0;display:flex;flex-direction:column;flex-shrink:0}
+.sidebar .brand{padding:0 16px 16px;font-weight:700;font-size:15px;border-bottom:1px solid var(--border);margin-bottom:8px}
+.sidebar .nav-item{padding:10px 16px;font-size:14px;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:8px}
+.sidebar .nav-item.active{background:#F3F4F6;color:var(--text);font-weight:600}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{background:var(--white);border-bottom:1px solid var(--border);padding:0 20px;height:50px;display:flex;align-items:center;justify-content:space-between}
+.topbar .title{font-size:15px;font-weight:600}
+.topbar .time{font-size:12px;color:var(--text3)}
+.content{flex:1;padding:16px 20px;overflow-y:auto}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-bottom:16px}
+.stat{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center}
+.stat .label{font-size:11px;color:var(--text3);margin-bottom:2px}
+.stat .value{font-size:18px;font-weight:700}
+.toolbar{background:var(--white);border:1px solid var(--border);border-radius:8px 8px 0 0;padding:10px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.toolbar input{padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;outline:none;background:var(--bg);width:160px}
+.toolbar input:focus{border-color:var(--blue);background:var(--white)}
+.toolbar select{padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);cursor:pointer}
+.toolbar .spacer{flex:1}
+.toolbar .count{font-size:12px;color:var(--text3)}
+.toolbar button{padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--white);font-size:12px;cursor:pointer}
+.toolbar button:hover{background:#F3F4F6}
+.toolbar button.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
+.toolbar button.danger{color:var(--red)}
+.table-wrap{background:var(--white);border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;overflow-x:auto;max-height:60vh;overflow-y:auto}
+table.admin-table{width:100%;border-collapse:collapse;font-size:12px;min-width:1400px}
+table.admin-table thead th{background:#F9FAFB;padding:8px 10px;text-align:left;font-weight:600;font-size:11px;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:1}
+table.admin-table tbody td{padding:8px 10px;border-bottom:1px solid #F3F4F6;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+table.admin-table tbody tr:hover{background:#F9FAFB}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text3);font-size:14px}
+.pager{display:flex;align-items:center;justify-content:center;gap:4px;padding:12px}
+.pager button{width:28px;height:28px;border:1px solid var(--border);border-radius:4px;background:var(--white);font-size:12px;cursor:pointer}
+.pager button.current{background:var(--brand);color:#fff;border-color:var(--brand)}
+.panel{display:none}.panel.active{display:block}
+.error-tag{display:inline-block;background:#FEF2F2;color:var(--red);font-size:10px;padding:1px 5px;border-radius:3px;margin-left:4px;cursor:help}
+.error-cell{background:#FFF5F5!important;position:relative}
+.error-cell::after{content:attr(data-err);position:absolute;top:-28px;left:0;background:var(--red);color:#fff;font-size:10px;padding:3px 6px;border-radius:4px;white-space:nowrap;z-index:10;opacity:0;pointer-events:none;transition:opacity .15s}
+.error-cell:hover::after{opacity:1}
+@media(max-width:768px){.sidebar{display:none}.stats{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ 学生端 ═══════════ -->
+<div id="studentApp" class="student-body">
+<div class="container">
+<div class="header"><h1>学员报名登记表</h1><div class="desc">请如实填写，标注 <span style="color:#DC2626">*</span> 为必填项。</div><div class="divider"></div></div>
+<form id="enrollmentForm" onsubmit="return handleSubmit(event)">
+<div class="section"><div class="section-title">1. 基本信息</div><div class="section-desc">请准确填写个人资料</div>
+<div class="field-row"><div class="field"><label>姓名<span class="req">*</span></label><input type="text" name="name" placeholder="请输入姓名" required></div><div class="field" style="max-width:100px"><label>性别<span class="req">*</span></label><select name="gender" required><option value="">-</option><option value="男">男</option><option value="女">女</option></select></div></div>
+<div class="field"><label>出生年月<span class="req">*</span></label><input type="text" name="birthday" placeholder="如 2008年6月" required><div class="hint">格式：年份+月份，如 2008年6月</div></div>
+<div class="field-row"><div class="field"><label>文化成绩<span class="opt">50分区间</span></label><input type="text" name="culture_score" placeholder="如 350-400"></div><div class="field"><label>联考成绩<span class="opt">复读生填写</span></label><input type="text" name="repeat_score" placeholder="复读生填写"></div></div>
+<div class="field"><label>选报班级<span class="req">*</span></label><select name="class_type" required><option value="">请选择班型</option><option value="VIP">VIP</option><option value="港澳台">港澳台</option><option value="定制班">定制班</option><option value="清央国">清央国</option><option value="超能班">超能班</option><option value="超重班">超重班</option><option value="全能班">全能班</option></select></div>
+</div>
+<div class="section"><div class="section-title">2. 宿舍信息</div>
+<div class="field"><label>宿舍房型<span class="req">*</span></label><select name="dorm_type" required><option value="">请选择</option><option value="2人间">2人间</option><option value="4人间">4人间</option><option value="6人间">6人间</option><option value="8人间">8人间</option></select></div>
+<div class="field-row" style="margin-top:16px"><div class="field"><label>宿舍房间号<span class="opt">选填</span></label><input type="text" name="dorm_room" placeholder="如 A301"></div><div class="field"><label>宿舍床位<span class="opt">选填</span></label><input type="text" name="dorm_bed" placeholder="如 1号床"></div></div>
+</div>
+<div class="section"><div class="section-title">3. 证件与联系方式</div>
+<div class="field"><label>身份证号码<span class="req">*</span></label><input type="text" name="id_card" placeholder="18位身份证号码" maxlength="18" required></div>
+<div class="field" style="margin-top:16px"><label>学生电话<span class="req">*</span></label><input type="tel" name="phone" placeholder="本人手机号" maxlength="11" required></div>
+</div>
+<div class="section"><div class="section-title">4. 家长信息</div><div class="section-desc">至少填写一位监护人</div>
+<div class="field-row"><div class="field"><label>父亲姓名<span class="opt">选填</span></label><input type="text" name="father_name" placeholder="父亲姓名"></div><div class="field"><label>父亲电话<span class="opt">选填</span></label><input type="tel" name="father_phone" placeholder="手机号码" maxlength="11"></div></div>
+<div class="field-row" style="margin-top:16px"><div class="field"><label>母亲姓名<span class="opt">选填</span></label><input type="text" name="mother_name" placeholder="母亲姓名"></div><div class="field"><label>母亲电话<span class="opt">选填</span></label><input type="tel" name="mother_phone" placeholder="手机号码" maxlength="11"></div></div>
+</div>
+<div class="section"><div class="section-title">5. 学籍信息</div>
+<div class="field"><label>高中官方全名<span class="req">*</span></label><input type="text" name="high_school" placeholder="所在高中全称" required></div>
+<div class="field" style="margin-top:16px"><label>所在地级市<span class="req">*</span></label><input type="text" name="city" placeholder="地级市，如广州市" required></div>
+</div>
+<div class="section"><div class="section-title">6. 学习计划</div>
+<div class="field"><label>学习时长<span class="req">* 至少选一项</span></label>
+<div class="pill-group"><div class="pill"><input type="checkbox" name="study_duration" value="暑假班" id="s1"><label for="s1">暑假班</label></div><div class="pill"><input type="checkbox" name="study_duration" value="寒假班" id="s2"><label for="s2">寒假班</label></div><div class="pill"><input type="checkbox" name="study_duration" value="联考结束" id="s3"><label for="s3">联考结束</label></div><div class="pill"><input type="checkbox" name="study_duration" value="校考结束" id="s4"><label for="s4">校考结束</label></div></div></div>
+<div class="field-row" style="margin-top:16px"><div class="field"><label>报到日期（起）<span class="req">*</span></label><input type="text" name="start_date" placeholder="年 / 月 / 日" required></div><div class="field"><label>报到日期（止）<span class="opt">选填</span></label><input type="text" name="end_date" placeholder="年 / 月 / 日"></div></div>
+</div>
+<div class="section"><div class="section-title">7. 家庭住址</div>
+<div class="field-row"><div class="field"><label>省<span class="req">*</span></label><input type="text" name="province" placeholder="省" required></div><div class="field"><label>市<span class="req">*</span></label><input type="text" name="home_city" placeholder="市" required></div><div class="field"><label>县/区<span class="req">*</span></label><input type="text" name="district" placeholder="县/区" required></div></div>
+</div>
+<div class="section"><div class="section-title">8. 其他信息</div>
+<div class="field"><label>有无过往病史（或特殊体质）<span class="req">*</span></label><div class="hint" style="margin-bottom:6px">无请填写"无"；如有请注明。</div><textarea name="medical_history" placeholder="如无异常请填写「无」" required></textarea></div>
+</div>
+<div class="section" id="confirmSection"><div class="section-title">9. 本人确认</div>
+<div class="check-row"><input type="checkbox" id="confirmCheck" required onchange="toggleConfirm()"><span class="check-box"></span><label for="confirmCheck">本人确认以上信息真实、准确，不存在任何虚假或遗漏，学员本人及监护人对以上信息承担所有法律责任。</label></div>
+<div class="confirm-fields" id="confirmFields">
+<div class="field-row" style="margin-top:12px"><div class="field"><label>确认人（学员）<span class="req">*</span></label><input type="text" name="confirm_student" placeholder="学员签名" required></div><div class="field"><label>监护人<span class="opt">选填</span></label><input type="text" name="confirm_guardian" placeholder="监护人签名"></div></div>
+<div class="field" style="margin-top:12px"><label>确认日期<span class="req">*</span></label><input type="text" name="confirm_date" id="confirmDate" placeholder="年 / 月 / 日"></div>
+</div>
+</div>
+<div class="submit-area"><button type="submit" class="btn-submit" id="submitBtn">提交登记</button></div>
+</form>
+<div class="footer-text">姜浩张超画室</div>
+</div>
+</div>
+
+<!-- ═══════════ 管理后台 ═══════════ -->
+<div id="adminApp" class="admin-body" style="display:none">
+<div class="sidebar">
+<div class="brand">管理后台</div>
+<div class="nav-item active" data-panel="data" onclick="switchPanel('data')"><span>&#x1F4CB;</span> 登记数据</div>
+<div class="nav-item" data-panel="check" onclick="switchPanel('check')"><span>&#x2705;</span> 数据校验</div>
+<div class="nav-item" data-panel="trash" onclick="switchPanel('trash')"><span>&#x1F5D1;</span> 回收站</div>
+<div class="nav-item" data-panel="history" onclick="switchPanel('history')"><span>&#x1F4C4;</span> 操作历史</div>
+<div class="nav-item" onclick="window.open(location.origin+location.pathname)"><span>&#x1F4DD;</span> 学生端入口</div>
+</div>
+<div class="main">
+<div class="topbar"><span class="title">学员登记数据</span><span class="time" id="liveTime"></span></div>
+<div class="content">
+<!-- 登记数据面板 -->
+<div class="panel active" id="panelData">
+<div class="stats">
+<div class="stat"><div class="label">总登记</div><div class="value" id="statTotal">0</div></div>
+<div class="stat"><div class="label">今日新增</div><div class="value" id="statToday" style="color:var(--blue)">0</div></div>
+<div class="stat"><div class="label">VIP</div><div class="value" id="statVIP">0</div></div>
+<div class="stat"><div class="label">港澳台</div><div class="value" id="statGAT">0</div></div>
+<div class="stat"><div class="label">定制班</div><div class="value" id="statDZ">0</div></div>
+<div class="stat"><div class="label">清央国</div><div class="value" id="statQY">0</div></div>
+<div class="stat"><div class="label">超能班</div><div class="value" id="statCN">0</div></div>
+<div class="stat"><div class="label">超重班</div><div class="value" id="statCZ">0</div></div>
+<div class="stat"><div class="label">全能班</div><div class="value" id="statQN">0</div></div>
+</div>
+<div class="toolbar">
+<input type="text" id="searchInput" placeholder="搜索姓名/身份证/学校/城市..." oninput="loadRecords()">
+<select id="classFilter" onchange="loadRecords()"><option value="">全部班型</option><option value="VIP">VIP</option><option value="港澳台">港澳台</option><option value="定制班">定制班</option><option value="清央国">清央国</option><option value="超能班">超能班</option><option value="超重班">超重班</option><option value="全能班">全能班</option></select>
+<span class="spacer"></span>
+<span class="count" id="recordCount">共 0 条</span>
+<button onclick="loadRecords()">&#x21bb; 刷新</button>
+<button class="primary" onclick="exportExcel()">&#x1F4E5; 导出Excel</button>
+<button onclick="exportJSON()">&#x1F4BE; 备份JSON</button>
+<button class="danger" onclick="clearAll()">&#x1F5D1; 清空</button>
+</div>
+<div class="table-wrap"><table class="admin-table"><thead id="tableHead"></thead><tbody id="tableBody"></tbody></table><div class="empty-state" id="emptyState">暂无登记数据</div></div>
+<div class="pager" id="pager"></div>
+</div>
+<!-- 数据校验面板 -->
+<div class="panel" id="panelCheck">
+<div class="toolbar"><span class="count" id="checkCount">共 0 条待校验</span><span class="spacer"></span><button class="primary" onclick="runValidation()">执行校验</button></div>
+<div class="table-wrap"><table class="admin-table"><thead><tr><th>姓名</th><th>身份证号</th><th>学生电话</th><th>父亲电话</th><th>母亲电话</th><th>出生日期</th><th>问题</th></tr></thead><tbody id="checkBody"></tbody></table><div class="empty-state" id="checkEmpty">暂无数据，点击"执行校验"开始</div></div>
+</div>
+<!-- 回收站面板 -->
+<div class="panel" id="panelTrash">
+<div class="toolbar"><span class="count" id="trashCount">回收站</span><span class="spacer"></span><button onclick="loadTrash()">&#x21bb; 刷新</button><button class="primary" onclick="restoreAllTrash()">&#x267B; 全部恢复</button><button class="danger" onclick="emptyTrash()">&#x1F5D1; 永久清空</button></div>
+<div class="table-wrap"><table class="admin-table"><thead><tr><th>姓名</th><th>班级</th><th>身份证</th><th>电话</th><th>删除时间</th><th>过期时间</th><th>操作</th></tr></thead><tbody id="trashBody"></tbody></table><div class="empty-state" id="trashEmpty">回收站为空</div></div>
+</div>
+<!-- 操作历史面板 -->
+<div class="panel" id="panelHistory">
+<div class="toolbar"><span class="count" id="historyCount">操作记录</span><span class="spacer"></span><button class="danger" onclick="clearHistory()">清空记录</button></div>
+<div class="table-wrap"><table class="admin-table"><thead><tr><th>时间</th><th>操作类型</th><th>详情</th></tr></thead><tbody id="historyBody"></tbody></table><div class="empty-state" id="historyEmpty">暂无操作记录</div></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="overlay" id="overlay"><div class="result"><div class="result-header"><div class="check">&#x2713;</div><h3>提交成功</h3><p>信息已记录，管理员将统一处理</p></div><div class="result-body"><table id="resultTable"></table></div><div class="result-footer"><button onclick="closeResult()">关闭</button></div></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════ Supabase 配置 ═══════════
+const SB_URL='https://qcvefxutsncfbhfnrczh.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjdmVmeHV0c25jZmJoZm5yY3poIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MTc4MTcsImV4cCI6MjA5NTk5MzgxN30.pjdqBGfpxR4IVSjSRf8dnMicndErvrEMK-pRY7gUQkU';
+const SB_HEADERS={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'};
+
+const FIELDS=[['姓名','name'],['性别','gender'],['出生年月','birthday'],['文化成绩','culture_score'],['联考成绩','repeat_score'],['选报班级','class_type'],['宿舍房型','dorm_type'],['宿舍房间号','dorm_room'],['宿舍床位','dorm_bed'],['身份证号码','id_card'],['学生电话','phone'],['父亲姓名','father_name'],['父亲电话','father_phone'],['母亲姓名','mother_name'],['母亲电话','mother_phone'],['高中官方全名','high_school'],['所在地级市','city'],['学习时长','study_duration'],['报到日期（起）','start_date'],['报到日期（止）','end_date'],['家庭住址-省','province'],['家庭住址-市','home_city'],['家庭住址-县/区','district'],['过往病史','medical_history'],['确认人（学员）','confirm_student'],['监护人','confirm_guardian'],['确认日期','confirm_date']];
+
+const TABLE_COLS=['name','gender','birthday','class_type','high_school','city','phone','id_card','dorm_type','dorm_room','dorm_bed','father_name','father_phone','mother_name','mother_phone','culture_score','repeat_score','study_duration','start_date','end_date','province','home_city','district','medical_history','confirm_student','confirm_guardian','confirm_date','created_at'];
+const TABLE_CN=['姓名','性别','出生年月','班型','高中','城市','电话','身份证','宿舍房型','房间号','床位','父亲','父亲电话','母亲','母亲电话','文化成绩','复读分','学习时长','报到起','报到止','省','市','县/区','病史','确认人','监护人','确认日期','提交时间'];
+
+const EXPORT_COLS=['id','name','gender','isReread','high_school','city','birthday','start_date','class_type','phone','id_card','address','repeat_score','father_name','father_phone','mother_name','mother_phone','dorm_room','dorm_type','culture_score','changeroom','remark'];
+const EXPORT_CN=['序号','姓名','性别','是否复读生','高中名称','城市','出生日期','入学时间','班级','联系电话','身份证号','家庭地址','复读分数','父亲姓名','联系电话','母亲姓名','联系电话','宿舍号','几人间','文化分数','变更宿舍','备注'];
+
+const PER_PAGE=20;
+
+// ═══════════ 路由 ═══════════
+function route(){const h=location.hash;document.getElementById('studentApp').style.display=(h==='#admin')?'none':'';document.getElementById('adminApp').style.display=(h==='#admin')?'flex':'none';if(h==='#admin'){switchPanel('data');startAdmin()}}
+window.addEventListener('hashchange',route);
+route();
+
+// ═══════════ 学生端 ═══════════
+function esc(s){const d=document.createElement('div');d.textContent=s||'-';return d.innerHTML}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._tid);t._tid=setTimeout(()=>t.classList.remove('show'),2500)}
+function toggleConfirm(){const c=document.getElementById('confirmCheck');const s=document.getElementById('confirmSection');const f=document.getElementById('confirmFields');const d=document.getElementById('confirmDate');if(c.checked){s.classList.add('confirmed');f.classList.add('open');d.required=true}else{s.classList.remove('confirmed');f.classList.remove('open');d.required=false}}
+function closeResult(){document.getElementById('overlay').classList.remove('show');document.getElementById('enrollmentForm').reset();toggleConfirm();document.getElementById('confirmCheck').checked=false}
+
+async function handleSubmit(e){
+  e.preventDefault();
+  const btn=document.getElementById('submitBtn');
+  btn.disabled=true;btn.textContent='提交中...';
+  const form=document.getElementById('enrollmentForm');
+  const cbs=form.querySelectorAll('input[name="study_duration"]:checked');
+  if(cbs.length===0){toast('请至少选择一项学习时长');btn.disabled=false;btn.textContent='提交登记';return false}
+  const fd=new FormData(form);const data={};
+  fd.forEach((v,k)=>{data[k]=v});
+  data.study_duration=Array.from(cbs).map(c=>c.value).join('、');
+  const dad=(data.father_name||'').trim()||(data.father_phone||'').trim();
+  const mom=(data.mother_name||'').trim()||(data.mother_phone||'').trim();
+  if(!dad&&!mom){toast('请至少填写一位监护人姓名及电话');btn.disabled=false;btn.textContent='提交登记';return false}
+
+  try{
+    const r=await fetch(SB_URL+'/rest/v1/enroll_record',{method:'POST',headers:SB_HEADERS,body:JSON.stringify(data)});
+    if(!r.ok)throw new Error(await r.text());
+  }catch(err){
+    toast('提交失败，请检查网络后重试');
+    btn.disabled=false;btn.textContent='提交登记';return false;
+  }
+
+  let html='';FIELDS.forEach(([l,k])=>{html+=`<tr><td>${l}</td><td>${esc(data[k])}</td></tr>`});
+  document.getElementById('resultTable').innerHTML=html;
+  document.getElementById('overlay').classList.add('show');
+  btn.disabled=false;btn.textContent='提交登记';
+  return false;
+}
+document.getElementById('overlay').addEventListener('click',function(e){if(e.target===this)closeResult()});
+
+// ═══════════ 管理后台 ═══════════
+let allRecords=[];
+
+async function startAdmin(){
+  updateClock();setInterval(updateClock,1000);
+  await loadRecords();
+  setInterval(loadRecords,15000);
+}
+
+function updateClock(){
+  const now=new Date();
+  document.getElementById('liveTime').textContent=now.toLocaleString('zh-CN',{hour12:false});
+}
+
+async function loadRecords(){
+  try{
+    const q=document.getElementById('searchInput').value.trim();
+    const cf=document.getElementById('classFilter').value;
+    let url=SB_URL+'/rest/v1/enroll_record?select=*&order=created_at.desc&limit=500';
+    let filters=[];
+    if(cf) filters.push(`class_type=eq.${encodeURIComponent(cf)}`);
+    if(q){const v=encodeURIComponent(q);filters.push(`or=(name.ilike.*${v}*,id_card.ilike.*${v}*,high_school.ilike.*${v}*,city.ilike.*${v}*)`);}
+    if(filters.length) url+='&'+filters.join('&');
+
+    const r=await fetch(url,{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+    allRecords=await r.json();
+    if(!Array.isArray(allRecords)) allRecords=[];
+    renderTable();
+  }catch(e){console.error(e)}
+}
+
+function renderTable(){
+  const total=allRecords.length;
+  const today=new Date().toISOString().slice(0,10);
+  const todayCount=allRecords.filter(r=>(r.created_at||'').startsWith(today)).length;
+  const countByClass=c=>allRecords.filter(r=>r.class_type===c).length;
+  document.getElementById('statTotal').textContent=total;
+  document.getElementById('statToday').textContent=todayCount;
+  document.getElementById('statVIP').textContent=countByClass('VIP');
+  document.getElementById('statGAT').textContent=countByClass('港澳台');
+  document.getElementById('statDZ').textContent=countByClass('定制班');
+  document.getElementById('statQY').textContent=countByClass('清央国');
+  document.getElementById('statCN').textContent=countByClass('超能班');
+  document.getElementById('statCZ').textContent=countByClass('超重班');
+  document.getElementById('statQN').textContent=countByClass('全能班');
+  document.getElementById('recordCount').textContent='共 '+total+' 条';
+
+  const thead=document.getElementById('tableHead');
+  thead.innerHTML='<tr>'+TABLE_CN.map(c=>'<th>'+c+'</th>').join('')+'</tr>';
+  const tbody=document.getElementById('tableBody');
+  const empty=document.getElementById('emptyState');
+  if(total===0){tbody.innerHTML='';empty.style.display='block';document.getElementById('pager').innerHTML='';return}
+  empty.style.display='none';
+
+  const page=parseInt(sessionStorage.getItem('adminPage')||'1');
+  const start=(page-1)*PER_PAGE;
+  const pageData=allRecords.slice(start,start+PER_PAGE);
+  tbody.innerHTML=pageData.map(r=>{
+    const errs=validateRecord(r);
+    return '<tr>'+TABLE_COLS.map(c=>{
+      const e=errs.find(e=>e.col===c);
+      return '<td'+(e?' class="error-cell" data-err="'+escAttr(e.msg)+'"':'')+'>'+esc(r[c])+(e?'<span class="error-tag">!</span>':'')+'</td>';
+    }).join('')+'</tr>';
+  }).join('');
+
+  const pages=Math.ceil(total/PER_PAGE);
+  let ph='';for(let i=1;i<=pages;i++){ph+=`<button class="${i===page?'current':''}" onclick="goPage(${i})">${i}</button>`}
+  document.getElementById('pager').innerHTML=ph;
+}
+
+function goPage(p){sessionStorage.setItem('adminPage',p);renderTable()}
+
+function formatBirthday(b){
+  if(!b)return'';
+  b=b.replace(/\s/g,'');
+  let m=b.match(/^(\d{4})[年.\-\/](\d{1,2})(?:[月.\-\/](\d{1,2}))?/);
+  if(m)return m[1]+'/'+m[2]+(m[3]?'/'+m[3]:'');
+  m=b.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if(m){const mo=parseInt(m[2]),dd=parseInt(m[3]);if(mo>=1&&mo<=12&&dd>=1&&dd<=31)return m[1]+'/'+mo+'/'+dd;}
+  m=b.match(/^(\d{4})(\d{2})$/);
+  if(m){const mo=parseInt(m[2]);if(mo>=1&&mo<=12)return m[1]+'/'+mo;}
+  return b;
+}
+async function exportExcel(){
+  if(allRecords.length===0){alert('暂无数据');return}
+  const headers=['序号','姓名','性别','是否复读生','高中名称','城市','出生日期','入学时间','班级','联系电话','身份证号','家庭地址','复读分数','父亲姓名','联系电话','母亲姓名','联系电话','宿舍号','几人间','文化分数','变更宿舍','备注'];
+  const rows=allRecords.map((r,i)=>{
+    const addr=[r.province||'',r.home_city||'',r.district||''].filter(Boolean).join('');
+    const isReread=(r.repeat_score&&r.repeat_score.trim())?'是':'否';
+    const birthdayFmt=formatBirthday(r.birthday);
+    return [i+1,r.name||'',r.gender||'',isReread,r.high_school||'',r.city||'',birthdayFmt,r.start_date||'',r.class_type||'',r.phone||'',r.id_card||'',addr,r.repeat_score||'',r.father_name||'',r.father_phone||'',r.mother_name||'',r.mother_phone||'',r.dorm_room||'',r.dorm_type||'',r.culture_score||'','',''];
+  });
+  rows.unshift(headers);
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  const range=XLSX.utils.decode_range(ws['!ref']||'A1:V1');
+  for(let c=range.s.c;c<=range.e.c;c++){
+    const cell=XLSX.utils.encode_cell({r:0,c:c});
+    if(ws[cell])ws[cell].s={font:{bold:true,sz:11,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'4472C4'}},alignment:{horizontal:'center',vertical:'center'}};
+  }
+  ws['!cols']=[6,8,6,10,18,10,12,12,10,13,20,30,10,8,13,8,13,8,8,10,8,8].map(w=>({wch:w}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'登记数据');
+  XLSX.writeFile(wb,'学员登记数据_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  logHistory('导出Excel','导出 '+allRecords.length+' 条记录');
+}
+
+function exportJSON(){
+  if(allRecords.length===0){alert('暂无数据');return}
+  const blob=new Blob([JSON.stringify(allRecords,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='enrollment_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();
+  logHistory('备份JSON','备份 '+allRecords.length+' 条记录');
+}
+
+async function clearAll(){
+  if(!confirm('确定清空全部登记数据吗？数据将移到回收站保留180天。'))return;
+  try{
+    const now=new Date().toISOString();
+    const expired=new Date(Date.now()+180*86400000).toISOString();
+    const trash=getTrash();
+    allRecords.forEach(r=>{
+      r._deleted_at=now; r._expires_at=expired;
+    });
+    trash.push(...allRecords);
+    saveTrash(trash);
+    await fetch(SB_URL+'/rest/v1/enroll_record?id=gt.0',{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+    allRecords=[];renderTable();toast('已移到回收站（保留180天）');
+    logHistory('清空数据','共 '+trash.length+' 条移入回收站');
+  }catch(e){toast('操作失败')}
+}
+
+// ═══════════ 面板切换 ═══════════
+function switchPanel(name){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('panel'+name.charAt(0).toUpperCase()+name.slice(1)).classList.add('active');
+  document.querySelector('.nav-item[data-panel="'+name+'"]').classList.add('active');
+  if(name==='trash')loadTrash();
+  if(name==='history')loadHistory();
+  if(name==='check')renderCheck();
+}
+function renderCheck(){document.getElementById('checkEmpty').style.display='block';document.getElementById('checkBody').innerHTML='';}
+
+// ═══════════ 数据校验 ═══════════
+function validateRecord(r){
+  const errs=[];
+  const id=r.id_card||'';
+  const phone=r.phone||'';
+  const fphone=r.father_phone||'';
+  const mphone=r.mother_phone||'';
+  const birthday=r.birthday||'';
+  if(id&&!/^\d{17}[\dXx]$/.test(id)) errs.push({col:'id_card',msg:'身份证格式错误'});
+  if(phone&&!/^1\d{10}$/.test(phone)) errs.push({col:'phone',msg:'手机号应为11位'});
+  if(fphone&&!/^1\d{10}$/.test(fphone)) errs.push({col:'father_phone',msg:'父亲电话格式错误'});
+  if(mphone&&!/^1\d{10}$/.test(mphone)) errs.push({col:'mother_phone',msg:'母亲电话格式错误'});
+  if(birthday&&!/^\d{4}[年.\-\/]\d{1,2}/.test(birthday)&&!/^\d{6,8}$/.test(birthday.replace(/\s/g,''))) errs.push({col:'birthday',msg:'出生日期格式不对'});
+  return errs;
+}
+function escAttr(s){return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
+function runValidation(){
+  const rows=allRecords.map(r=>({name:r.name,id_card:r.id_card,phone:r.phone,father_phone:r.father_phone,mother_phone:r.mother_phone,birthday:r.birthday,errs:validateRecord(r)}));
+  const errRecords=rows.filter(r=>r.errs.length);
+  document.getElementById('checkCount').textContent='共 '+errRecords.length+' 条问题';
+  const tbody=document.getElementById('checkBody');
+  const empty=document.getElementById('checkEmpty');
+  if(errRecords.length===0){tbody.innerHTML='';empty.style.display='block';empty.textContent='✓ 全部通过校验';toast('数据校验通过');return}
+  empty.style.display='none';
+  tbody.innerHTML=errRecords.map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+esc(r.id_card)+'</td><td>'+esc(r.phone)+'</td><td>'+esc(r.father_phone)+'</td><td>'+esc(r.mother_phone)+'</td><td>'+esc(r.birthday)+'</td><td style="color:var(--red)">'+r.errs.map(e=>e.msg).join('；')+'</td></tr>').join('');
+  logHistory('数据校验','发现 '+errRecords.length+' 条问题');
+  toast('发现 '+errRecords.length+' 条数据有格式问题');
+}
+
+// ═══════════ 回收站 ═══════════
+const TRASH_KEY='enrollment_trash';
+function getTrash(){try{return JSON.parse(localStorage.getItem(TRASH_KEY)||'[]')}catch(e){return[]}}
+function saveTrash(d){localStorage.setItem(TRASH_KEY,JSON.stringify(d))}
+function loadTrash(){
+  const now=new Date().toISOString();
+  let trash=getTrash();
+  trash=trash.filter(r=>(r._expires_at||'')>now);
+  saveTrash(trash);
+  document.getElementById('trashCount').textContent='共 '+trash.length+' 条（180天自动清理）';
+  const tbody=document.getElementById('trashBody');
+  const empty=document.getElementById('trashEmpty');
+  if(trash.length===0){tbody.innerHTML='';empty.style.display='block';return}
+  empty.style.display='none';
+  tbody.innerHTML=trash.map((r,i)=>'<tr><td>'+esc(r.name)+'</td><td>'+esc(r.class_type)+'</td><td>'+esc(r.id_card)+'</td><td>'+esc(r.phone)+'</td><td>'+esc(r._deleted_at||'').slice(0,16)+'</td><td>'+esc(r._expires_at||'').slice(0,10)+'</td><td><button onclick="restoreTrash('+i+')">恢复</button> <button class="danger" onclick="permDelete('+i+')">删除</button></td></tr>').join('');
+}
+async function restoreTrash(i){
+  const trash=getTrash();
+  const item=trash.splice(i,1)[0];
+  if(!item)return;
+  const record={...item};delete record._deleted_at;delete record._expires_at;
+  delete record.id;delete record.created_at;
+  try{
+    await fetch(SB_URL+'/rest/v1/enroll_record',{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(record)});
+    saveTrash(trash);loadTrash();await loadRecords();toast('已恢复');
+    logHistory('恢复数据','恢复 '+record.name);
+  }catch(e){toast('恢复失败')}
+}
+async function restoreAllTrash(){
+  if(!confirm('确定恢复回收站全部数据？'))return;
+  const trash=getTrash();
+  for(const r of trash){
+    const record={...r};delete record._deleted_at;delete record._expires_at;delete record.id;delete record.created_at;
+    try{await fetch(SB_URL+'/rest/v1/enroll_record',{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(record)})}catch(e){}
+  }
+  const count=trash.length;
+  saveTrash([]);loadTrash();await loadRecords();toast('已恢复 '+count+' 条');
+  logHistory('批量恢复','恢复 '+count+' 条数据');
+}
+function permDelete(i){
+  if(!confirm('永久删除后不可恢复，确定吗？'))return;
+  const trash=getTrash();
+  const name=trash[i]?.name||'';
+  trash.splice(i,1);saveTrash(trash);loadTrash();toast('已永久删除');
+  logHistory('永久删除','永久删除 '+name);
+}
+function emptyTrash(){
+  if(!confirm('确定永久清空回收站全部内容？不可恢复！'))return;
+  const count=getTrash().length;
+  saveTrash([]);loadTrash();toast('回收站已清空');
+  logHistory('清空回收站','永久清空 '+count+' 条');
+}
+
+// ═══════════ 操作历史 ═══════════
+const HIST_KEY='enrollment_history';
+function logHistory(type,detail){
+  const h=getHistory();
+  h.unshift({time:new Date().toISOString(),type,detail});
+  if(h.length>200)h.length=200;
+  localStorage.setItem(HIST_KEY,JSON.stringify(h));
+}
+function getHistory(){try{return JSON.parse(localStorage.getItem(HIST_KEY)||'[]')}catch(e){return[]}}
+function loadHistory(){
+  const h=getHistory();
+  document.getElementById('historyCount').textContent='共 '+h.length+' 条记录';
+  const tbody=document.getElementById('historyBody');
+  const empty=document.getElementById('historyEmpty');
+  if(h.length===0){tbody.innerHTML='';empty.style.display='block';return}
+  empty.style.display='none';
+  tbody.innerHTML=h.map(r=>'<tr><td>'+esc(r.time).slice(0,19).replace('T',' ')+'</td><td>'+esc(r.type)+'</td><td>'+esc(r.detail)+'</td></tr>').join('');
+}
+function clearHistory(){
+  if(!confirm('确定清除所有操作历史？'))return;
+  localStorage.removeItem(HIST_KEY);loadHistory();toast('操作历史已清除');
+}
+</script>
+</body>
+</html>
