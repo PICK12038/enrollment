@@ -539,6 +539,7 @@ function exportJSON(){
 
 // ═══════════ 编辑记录 ═══════════
 let editingId=null;
+let editingRecord=null;
 const EDIT_FIELDS=[
   {label:'姓名',name:'name'},{label:'性别',name:'gender',type:'select',opts:['男','女']},
   {label:'出生年月',name:'birthday',hint:'如 2008年6月'},{label:'文化成绩',name:'culture_score'},
@@ -556,6 +557,7 @@ function editRecord(id){
   const r=allRecords.find(x=>x.id===id);
   if(!r)return;
   editingId=id;
+  editingRecord={...r};
   document.getElementById('editId').textContent='ID: '+id;
   let html='';
   EDIT_FIELDS.forEach(f=>{
@@ -570,27 +572,39 @@ function editRecord(id){
   document.getElementById('editOverlay').classList.add('show');
 }
 
-function closeEdit(){editingId=null;document.getElementById('editOverlay').classList.remove('show')}
+function closeEdit(){editingId=null;editingRecord=null;document.getElementById('editOverlay').classList.remove('show')}
 
 async function saveEdit(){
   if(!editingId)return;
+  const btn=document.querySelector('#editOverlay .result-footer button');
+  btn.disabled=true;btn.textContent='保存中...';
   const data={};
+  const missing=[];
   EDIT_FIELDS.forEach(f=>{
     const el=document.getElementById('ef_'+f.name);
     if(el) data[f.name]=el.value;
+    else missing.push(f.name);
   });
+  if(missing.length) console.warn('缺失字段:',missing);
   try{
     const r=await fetch(SB_URL+'/rest/v1/enroll_record?id=eq.'+editingId,{
       method:'PATCH',
-      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
       body:JSON.stringify(data)
     });
-    if(!r.ok)throw new Error(await r.text());
-    const idx=allRecords.findIndex(x=>x.id===editingId);
-    if(idx>=0) Object.assign(allRecords[idx],data);
-    renderTable();closeEdit();toast('修改成功');
+    if(!r.ok){
+      const err=await r.text();
+      throw new Error('HTTP '+r.status+': '+err);
+    }
+    // 从服务器重新拉取数据，确保一致性
+    await loadRecords();
+    closeEdit();toast('修改成功 ✓');
     logHistory('修改记录','修改记录 ID:'+editingId);
-  }catch(e){toast('修改失败');console.error(e)}
+  }catch(e){
+    toast('修改失败：'+e.message.slice(0,50));
+    console.error('saveEdit error:',e);
+    btn.disabled=false;btn.textContent='保存修改';
+  }
 }
 document.getElementById('editOverlay').addEventListener('click',function(e){if(e.target===this)closeEdit()});
 
