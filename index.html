@@ -197,9 +197,12 @@ table.admin-table tbody tr:hover{background:#F9FAFB}
 <!-- 登记数据面板 -->
 <div class="panel active" id="panelData">
 <div class="stats">
-<div class="stat"><div class="label">总登记</div><div class="value" id="statTotal">0</div></div>
-<div class="stat"><div class="label">今日新增</div><div class="value" id="statToday" style="color:var(--blue)">0</div></div>
-<div class="stat"><div class="label">操作记录</div><div class="value" id="statHist" style="color:var(--green)">0</div></div>
+<div class="stat" style="border-left:3px solid var(--brand)"><div class="label">总登记数</div><div class="value" id="statTotal">0</div></div>
+<div class="stat" style="border-left:3px solid var(--blue)"><div class="label">今日新增</div><div class="value" id="statToday" style="color:var(--blue)">0</div></div>
+<div class="stat" style="border-left:3px solid var(--green)"><div class="label">历史累计</div><div class="value" id="statHistAll" style="color:var(--green)">0</div></div>
+<div class="stat" style="border-left:3px solid var(--red)"><div class="label">操作记录</div><div class="value" id="statHist" style="color:var(--red)">0</div></div>
+</div>
+<div class="stats" style="margin-top:8px">
 <div class="stat"><div class="label">VIP</div><div class="value" id="statVIP">0</div></div>
 <div class="stat"><div class="label">港澳台</div><div class="value" id="statGAT">0</div></div>
 <div class="stat"><div class="label">定制班</div><div class="value" id="statDZ">0</div></div>
@@ -212,6 +215,7 @@ table.admin-table tbody tr:hover{background:#F9FAFB}
 <input type="text" id="searchInput" placeholder="搜索姓名/身份证/学校/城市/电话..." oninput="debounceSearch()" autocomplete="off" style="position:relative">
 <div id="citySuggest" style="display:none;position:absolute;top:40px;left:0;background:#fff;border:1px solid var(--border);border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto;z-index:50;min-width:200px;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
 <select id="classFilter" onchange="debounceSearch()"><option value="">全部班型</option><option value="VIP">VIP</option><option value="港澳台">港澳台</option><option value="定制班">定制班</option><option value="清央国">清央国</option><option value="超能班">超能班</option><option value="超重班">超重班</option><option value="全能班">全能班</option></select>
+<button onclick="clearSearch()" title="清空搜索" style="padding:4px 8px">&#x2715; 清空</button>
 <span class="spacer"></span>
 <span class="count" id="recordCount">共 0 条</span>
 <button onclick="loadRecords()">&#x21bb; 刷新</button>
@@ -398,6 +402,25 @@ searchInput.addEventListener('blur',function(){
 });
 
 function debounceSearch(){clearTimeout(searchTimer);searchTimer=setTimeout(loadRecords,300)}
+
+function clearSearch(){
+  document.getElementById('searchInput').value='';
+  document.getElementById('classFilter').value='';
+  document.getElementById('citySuggest').style.display='none';
+  loadRecords();
+  logHistory('清空搜索','清空搜索条件');
+}
+
+// 搜索自检：无结果时提示 + 保存搜索历史
+async function _loadWithFeedback(){
+  await loadRecords();
+  const q=document.getElementById('searchInput').value.trim();
+  if(q&&allRecords.length===0){
+    document.getElementById('emptyState').innerHTML='<div style="padding:40px;color:var(--text3)">未找到匹配"<b>'+esc(q)+'</b>"的记录<br><small>试试搜姓名、城市、学校简称</small></div>';
+  }
+}
+const _origDebounce=debounceSearch;
+debounceSearch=function(){clearTimeout(searchTimer);searchTimer=setTimeout(_loadWithFeedback,300)};
 async function loadRecords(){
   try{
     const q=document.getElementById('searchInput').value.trim();
@@ -434,6 +457,8 @@ function renderTable(){
   const countByClass=c=>allRecords.filter(r=>r.class_type===c).length;
   document.getElementById('statTotal').textContent=total;
   document.getElementById('statToday').textContent=todayCount;
+  document.getElementById('statHistAll').textContent=total+getTrash().length;
+  document.getElementById('statHist').textContent=getHistory().length;
   document.getElementById('statVIP').textContent=countByClass('VIP');
   document.getElementById('statGAT').textContent=countByClass('港澳台');
   document.getElementById('statDZ').textContent=countByClass('定制班');
