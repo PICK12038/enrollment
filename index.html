@@ -361,7 +361,7 @@ let allRecords=[];
 async function startAdmin(){
   updateClock();setInterval(updateClock,1000);
   await loadRecords();
-  setInterval(loadRecords,15000);
+  setInterval(()=>{if(!editingId)loadRecords()},15000);
 }
 
 function updateClock(){
@@ -577,33 +577,40 @@ function closeEdit(){editingId=null;editingRecord=null;document.getElementById('
 async function saveEdit(){
   if(!editingId)return;
   const btn=document.querySelector('#editOverlay .result-footer button');
+  if(!btn)return;
   btn.disabled=true;btn.textContent='保存中...';
-  const data={};
-  const missing=[];
-  EDIT_FIELDS.forEach(f=>{
+  const cancelBtn=document.querySelectorAll('#editOverlay .result-footer button')[1];
+  if(cancelBtn) cancelBtn.disabled=true;
+
+  const data={};EDIT_FIELDS.forEach(f=>{
     const el=document.getElementById('ef_'+f.name);
     if(el) data[f.name]=el.value;
-    else missing.push(f.name);
   });
-  if(missing.length) console.warn('缺失字段:',missing);
+
+  // 10秒超时保护
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),10000);
+
   try{
     const r=await fetch(SB_URL+'/rest/v1/enroll_record?id=eq.'+editingId,{
       method:'PATCH',
       headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
-      body:JSON.stringify(data)
+      body:JSON.stringify(data),
+      signal:controller.signal
     });
-    if(!r.ok){
-      const err=await r.text();
-      throw new Error('HTTP '+r.status+': '+err);
-    }
-    // 从服务器重新拉取数据，确保一致性
+    clearTimeout(timeout);
+    if(!r.ok){const err=await r.text();throw new Error('HTTP '+r.status+': '+err)}
     await loadRecords();
-    closeEdit();toast('修改成功 ✓');
+    closeEdit();toast('修改成功');
     logHistory('修改记录','修改记录 ID:'+editingId);
   }catch(e){
-    toast('修改失败：'+e.message.slice(0,50));
-    console.error('saveEdit error:',e);
+    clearTimeout(timeout);
+    const msg=e.name==='AbortError'?'保存超时，请检查网络':e.message.slice(0,50);
+    toast('修改失败：'+msg);
+    console.error('saveEdit:',e);
+  }finally{
     btn.disabled=false;btn.textContent='保存修改';
+    if(cancelBtn) cancelBtn.disabled=false;
   }
 }
 document.getElementById('editOverlay').addEventListener('click',function(e){if(e.target===this)closeEdit()});
