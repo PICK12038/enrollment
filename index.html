@@ -199,6 +199,7 @@ table.admin-table tbody tr:hover{background:#F9FAFB}
 <div class="stats">
 <div class="stat"><div class="label">总登记</div><div class="value" id="statTotal">0</div></div>
 <div class="stat"><div class="label">今日新增</div><div class="value" id="statToday" style="color:var(--blue)">0</div></div>
+<div class="stat"><div class="label">操作记录</div><div class="value" id="statHist" style="color:var(--green)">0</div></div>
 <div class="stat"><div class="label">VIP</div><div class="value" id="statVIP">0</div></div>
 <div class="stat"><div class="label">港澳台</div><div class="value" id="statGAT">0</div></div>
 <div class="stat"><div class="label">定制班</div><div class="value" id="statDZ">0</div></div>
@@ -208,9 +209,9 @@ table.admin-table tbody tr:hover{background:#F9FAFB}
 <div class="stat"><div class="label">全能班</div><div class="value" id="statQN">0</div></div>
 </div>
 <div class="toolbar">
-<input type="text" id="searchInput" placeholder="搜索姓名/身份证/学校/城市/电话..." oninput="debounceSearch()">
-<input type="text" id="searchExtra" placeholder="附加搜索（空格分隔多个关键词）" oninput="debounceSearch()" style="width:200px">
-<select id="classFilter" onchange="loadRecords()"><option value="">全部班型</option><option value="VIP">VIP</option><option value="港澳台">港澳台</option><option value="定制班">定制班</option><option value="清央国">清央国</option><option value="超能班">超能班</option><option value="超重班">超重班</option><option value="全能班">全能班</option></select>
+<input type="text" id="searchInput" placeholder="搜索姓名/身份证/学校/城市/电话..." oninput="debounceSearch()" autocomplete="off" style="position:relative">
+<div id="citySuggest" style="display:none;position:absolute;top:40px;left:0;background:#fff;border:1px solid var(--border);border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto;z-index:50;min-width:200px;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
+<select id="classFilter" onchange="debounceSearch()"><option value="">全部班型</option><option value="VIP">VIP</option><option value="港澳台">港澳台</option><option value="定制班">定制班</option><option value="清央国">清央国</option><option value="超能班">超能班</option><option value="超重班">超重班</option><option value="全能班">全能班</option></select>
 <span class="spacer"></span>
 <span class="count" id="recordCount">共 0 条</span>
 <button onclick="loadRecords()">&#x21bb; 刷新</button>
@@ -251,6 +252,7 @@ table.admin-table tbody tr:hover{background:#F9FAFB}
 </div>
 </div>
 
+<div class="overlay" id="editOverlay"><div class="result" style="max-width:600px"><div class="result-header"><div class="check" style="background:#EFF6FF;color:var(--blue)">&#x270E;</div><h3>修改记录</h3><p id="editId"></p></div><div class="result-body" id="editFormBody" style="max-height:60vh"></div><div class="result-footer"><button onclick="saveEdit()" style="background:var(--blue);margin-bottom:8px">保存修改</button><button onclick="closeEdit()">取消</button></div></div></div>
 <div class="overlay" id="overlay"><div class="result"><div class="result-header"><div class="check">&#x2713;</div><h3>提交成功</h3><p>信息已记录，管理员将统一处理</p></div><div class="result-body"><table id="resultTable"></table></div><div class="result-footer"><button onclick="closeResult()">关闭</button></div></div></div>
 <div class="toast" id="toast"></div>
 
@@ -363,26 +365,58 @@ function updateClock(){
   document.getElementById('liveTime').textContent=now.toLocaleString('zh-CN',{hour12:false});
 }
 
-// ═══════════ 搜索防抖 + 增强搜索 ═══════════
+// ═══════════ 城市数据库 + 智能搜索 ═══════════
+const CITIES=['广州','深圳','东莞','佛山','珠海','惠州','中山','江门','肇庆','汕头','潮州','揭阳','汕尾','梅州','河源','韶关','清远','云浮','茂名','湛江','阳江','北京','上海','天津','重庆','成都','武汉','长沙','南京','杭州','苏州','郑州','西安','合肥','南昌','福州','厦门','济南','青岛','沈阳','大连','长春','哈尔滨','石家庄','太原','南宁','昆明','贵阳','海口','三亚','兰州','银川','西宁','乌鲁木齐','拉萨','香港','澳门','台北'];
+
+const searchInput=document.getElementById('searchInput');
 let searchTimer=null;
+
+function showCitySuggest(q){
+  const div=document.getElementById('citySuggest');
+  if(!q||q.length<1){div.style.display='none';return}
+  const matches=CITIES.filter(c=>c.includes(q)).slice(0,8);
+  if(matches.length===0||q.length>5){div.style.display='none';return}
+  div.innerHTML=matches.map(c=>`<div style="padding:6px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f3f4f6" onmousedown="pickCity('${c}')">🏙 ${c}</div>`).join('');
+  div.style.display='block';
+}
+
+function pickCity(c){
+  searchInput.value=c;document.getElementById('citySuggest').style.display='none';
+  debounceSearch();
+}
+
+searchInput.addEventListener('input',function(){
+  const v=this.value.trim();
+  // Show city suggestions if typing looks like a city search
+  if(v&&!/\d/.test(v))showCitySuggest(v);
+  else document.getElementById('citySuggest').style.display='none';
+  debounceSearch();
+});
+
+searchInput.addEventListener('blur',function(){
+  setTimeout(()=>document.getElementById('citySuggest').style.display='none',200);
+});
+
 function debounceSearch(){clearTimeout(searchTimer);searchTimer=setTimeout(loadRecords,300)}
 async function loadRecords(){
   try{
     const q=document.getElementById('searchInput').value.trim();
-    const qx=document.getElementById('searchExtra').value.trim();
     const cf=document.getElementById('classFilter').value;
     let url=SB_URL+'/rest/v1/enroll_record?select=*&order=created_at.desc&limit=500';
     let filters=[];
     if(cf) filters.push(`class_type=eq.${encodeURIComponent(cf)}`);
-    const keywords=[];
-    if(q) keywords.push(q);
-    if(qx) qx.split(/\s+/).forEach(k=>{if(k)keywords.push(k)});
-    if(keywords.length){
-      const orParts=keywords.map(k=>{
-        const v=encodeURIComponent(k);
-        return `or=(name.ilike.*${v}*,id_card.ilike.*${v}*,high_school.ilike.*${v}*,city.ilike.*${v}*,phone.ilike.*${v}*,father_name.ilike.*${v}*,mother_name.ilike.*${v}*,dorm_room.ilike.*${v}*)`;
-      });
-      filters.push(orParts.join(','));
+    if(q){
+      const keywords=q.split(/\s+/).filter(Boolean);
+      if(keywords.length===1){
+        const v=encodeURIComponent(keywords[0]);
+        filters.push(`or=(name.ilike.*${v}*,id_card.ilike.*${v}*,high_school.ilike.*${v}*,city.ilike.*${v}*,phone.ilike.*${v}*,father_name.ilike.*${v}*,mother_name.ilike.*${v}*,dorm_room.ilike.*${v}*)`);
+      }else{
+        const orParts=keywords.map(k=>{
+          const v=encodeURIComponent(k);
+          return `or=(name.ilike.*${v}*,id_card.ilike.*${v}*,high_school.ilike.*${v}*,city.ilike.*${v}*,phone.ilike.*${v}*,father_name.ilike.*${v}*,mother_name.ilike.*${v}*,dorm_room.ilike.*${v}*)`;
+        });
+        filters.push(orParts.join(','));
+      }
     }
     if(filters.length) url+='&'+filters.join('&');
 
@@ -407,10 +441,11 @@ function renderTable(){
   document.getElementById('statCN').textContent=countByClass('超能班');
   document.getElementById('statCZ').textContent=countByClass('超重班');
   document.getElementById('statQN').textContent=countByClass('全能班');
+  document.getElementById('statHist').textContent=getHistory().length;
   document.getElementById('recordCount').textContent='共 '+total+' 条';
 
   const thead=document.getElementById('tableHead');
-  thead.innerHTML='<tr>'+TABLE_CN.map(c=>'<th>'+c+'</th>').join('')+'<th>操作</th></tr>';
+  thead.innerHTML='<tr><th>序号</th>'+TABLE_CN.map(c=>'<th>'+c+'</th>').join('')+'<th>操作</th></tr>';
   const tbody=document.getElementById('tableBody');
   const empty=document.getElementById('emptyState');
   if(total===0){tbody.innerHTML='';empty.style.display='block';document.getElementById('pager').innerHTML='';return}
@@ -422,11 +457,12 @@ function renderTable(){
   tbody.innerHTML=pageData.map(r=>{
     const errs=validateRecord(r);
     const errCols={};errs.forEach(e=>{if(!errCols[e.field])errCols[e.field]=e.msg});
-    return '<tr>'+TABLE_COLS.map(c=>{
+        const rowIndex=allRecords.indexOf(r)+1;
+    return '<tr><td style="text-align:center">'+rowIndex+'</td>'+TABLE_COLS.map(c=>{
       const cnMap={name:'姓名',gender:'性别',birthday:'出生年月',class_type:'班型',high_school:'高中',city:'城市',phone:'学生电话',id_card:'身份证号',dorm_type:'宿舍房型',dorm_room:'房间号',father_phone:'父亲电话',mother_phone:'母亲电话',culture_score:'文化成绩',repeat_score:'复读分'};
       const e=errCols[cnMap[c]];
       return '<td'+(e?' class="error-cell" data-err="'+escAttr(e)+'"':'')+'>'+esc(r[c])+(e?'<span class="error-tag">!</span>':'')+'</td>';
-    }).join('')+'<td><button onclick="deleteOne('+r.id+')" style="color:var(--red);font-size:11px;padding:2px 8px;border:1px solid var(--red);border-radius:4px;background:#fff;cursor:pointer">删除</button></td>'+'</tr>';
+    }).join('')+'<td><button onclick="editRecord('+r.id+')" style="color:var(--blue);font-size:11px;padding:2px 8px;border:1px solid var(--blue);border-radius:4px;background:#fff;cursor:pointer;margin-right:4px">修改</button><button onclick="deleteOne('+r.id+')" style="color:var(--red);font-size:11px;padding:2px 8px;border:1px solid var(--red);border-radius:4px;background:#fff;cursor:pointer">删除</button></td>'+'</tr>';
   }).join('');
 
   const pages=Math.ceil(total/PER_PAGE);
@@ -475,6 +511,63 @@ function exportJSON(){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='enrollment_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();
   logHistory('备份JSON','备份 '+allRecords.length+' 条记录');
 }
+
+// ═══════════ 编辑记录 ═══════════
+let editingId=null;
+const EDIT_FIELDS=[
+  {label:'姓名',name:'name'},{label:'性别',name:'gender',type:'select',opts:['男','女']},
+  {label:'出生年月',name:'birthday',hint:'如 2008年6月'},{label:'文化成绩',name:'culture_score'},
+  {label:'联考成绩',name:'repeat_score'},{label:'选报班级',name:'class_type',type:'select',opts:['VIP','港澳台','定制班','清央国','超能班','超重班','全能班']},
+  {label:'宿舍房型',name:'dorm_type',type:'select',opts:['2人间','4人间','6人间','8人间']},{label:'宿舍房间号',name:'dorm_room'},{label:'宿舍床位',name:'dorm_bed'},
+  {label:'身份证号',name:'id_card'},{label:'学生电话',name:'phone'},
+  {label:'父亲姓名',name:'father_name'},{label:'父亲电话',name:'father_phone'},{label:'母亲姓名',name:'mother_name'},{label:'母亲电话',name:'mother_phone'},
+  {label:'高中全名',name:'high_school'},{label:'地级市',name:'city'},{label:'学习时长',name:'study_duration'},
+  {label:'报到日期（起）',name:'start_date'},{label:'报到日期（止）',name:'end_date'},
+  {label:'省',name:'province'},{label:'市',name:'home_city'},{label:'县/区',name:'district'},{label:'病史',name:'medical_history'},
+  {label:'确认人',name:'confirm_student'},{label:'监护人',name:'confirm_guardian'},{label:'确认日期',name:'confirm_date'}
+];
+
+function editRecord(id){
+  const r=allRecords.find(x=>x.id===id);
+  if(!r)return;
+  editingId=id;
+  document.getElementById('editId').textContent='ID: '+id;
+  let html='';
+  EDIT_FIELDS.forEach(f=>{
+    const v=r[f.name]||'';
+    if(f.type==='select'){
+      html+=`<div class="field" style="margin-bottom:8px"><label>${f.label}</label><select id="ef_${f.name}">${f.opts.map(o=>`<option value="${o}" ${v===o?'selected':''}>${o}</option>`).join('')}</select></div>`;
+    }else{
+      html+=`<div class="field" style="margin-bottom:8px"><label>${f.label}</label><input type="text" id="ef_${f.name}" value="${escAttr(v)}">${f.hint?`<div class="hint">${f.hint}</div>`:''}</div>`;
+    }
+  });
+  document.getElementById('editFormBody').innerHTML=html;
+  document.getElementById('editOverlay').classList.add('show');
+}
+
+function closeEdit(){editingId=null;document.getElementById('editOverlay').classList.remove('show')}
+
+async function saveEdit(){
+  if(!editingId)return;
+  const data={};
+  EDIT_FIELDS.forEach(f=>{
+    const el=document.getElementById('ef_'+f.name);
+    if(el) data[f.name]=el.value;
+  });
+  try{
+    const r=await fetch(SB_URL+'/rest/v1/enroll_record?id=eq.'+editingId,{
+      method:'PATCH',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify(data)
+    });
+    if(!r.ok)throw new Error(await r.text());
+    const idx=allRecords.findIndex(x=>x.id===editingId);
+    if(idx>=0) Object.assign(allRecords[idx],data);
+    renderTable();closeEdit();toast('修改成功');
+    logHistory('修改记录','修改记录 ID:'+editingId);
+  }catch(e){toast('修改失败');console.error(e)}
+}
+document.getElementById('editOverlay').addEventListener('click',function(e){if(e.target===this)closeEdit()});
 
 async function deleteOne(id){
   if(!confirm('确定删除这条记录吗？将移到回收站保留180天。'))return;
