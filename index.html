@@ -366,6 +366,7 @@ document.getElementById('overlay').addEventListener('click',function(e){if(e.tar
 
 // ═══════════ 管理后台 ═══════════
 let allRecords=[];
+let selected=new Set();
 
 async function startAdmin(){
   updateClock();setInterval(updateClock,1000);
@@ -548,7 +549,7 @@ function renderTable(){
     const errs=validateRecord(r);
     const errCols={};errs.forEach(e=>{if(!errCols[e.field])errCols[e.field]=e.msg});
         const rowIndex=allRecords.indexOf(r)+1;
-    const checked=selected.has(r.id)?' checked':'';
+    const checked=(typeof selected!=='undefined'&&selected.has(r.id))?' checked':'';
     return '<tr><td><input type="checkbox" class="rowCheck" value="'+r.id+'" onchange="updateSelect()"'+checked+'></td><td style="text-align:center">'+rowIndex+'</td>'+TABLE_COLS.map(c=>{
       const cnMap={name:'姓名',gender:'性别',birthday:'出生年月',class_type:'班型',high_school:'高中',city:'城市',phone:'学生电话',id_card:'身份证号',dorm_type:'宿舍房型',dorm_room:'房间号',father_phone:'父亲电话',mother_phone:'母亲电话',culture_score:'文化成绩',repeat_score:'复读分'};
       const e=errCols[cnMap[c]];
@@ -562,6 +563,40 @@ function renderTable(){
 }
 
 function goPage(p){sessionStorage.setItem('adminPage',p);renderTable()}
+
+// ═══════════ 多选功能 ═══════════
+function updateSelect(){
+  const cbs=document.querySelectorAll('.rowCheck');selected=new Set();
+  cbs.forEach(cb=>{if(cb.checked)selected.add(parseInt(cb.value))});
+  const n=selected.size;
+  const bar=document.getElementById('selectBar');const cnt=document.getElementById('selectCount');
+  cnt.textContent='已选'+n+'条';bar.style.display=n>0?'inline-flex':'none';
+  const sa=document.getElementById('selectAll');if(sa)sa.checked=cbs.length>0&&n===cbs.length;
+}
+function toggleSelectAll(){
+  const all=document.getElementById('selectAll').checked;
+  document.querySelectorAll('.rowCheck').forEach(cb=>{cb.checked=all});updateSelect();
+}
+function clearSelect(){document.querySelectorAll('.rowCheck').forEach(cb=>{cb.checked=false});selected.clear();updateSelect()}
+function getSelected(){return allRecords.filter(r=>selected.has(r.id))}
+
+function batchExport(){
+  const recs=getSelected();if(!recs.length){alert('请先勾选');return}
+  const headers=['序号','姓名','性别','是否复读生','高中名称','城市','出生日期','入学时间','班级','联系电话','身份证号','家庭地址','复读分数','父亲姓名','联系电话','母亲姓名','联系电话','宿舍号','几人间','文化分数','变更宿舍','备注'];
+  const rows=recs.map((r,i)=>{const addr=[r.province||'',r.home_city||'',r.district||''].filter(Boolean).join('');return[i+1,r.name||'',r.gender||'',(r.repeat_score&&r.repeat_score.trim())?'是':'否',r.high_school||'',r.city||'',formatBirthday(r.birthday),r.start_date||'',r.class_type||'',r.phone||'',r.id_card||'',addr,r.repeat_score||'',r.father_name||'',r.father_phone||'',r.mother_name||'',r.mother_phone||'',r.dorm_room||'',r.dorm_type||'',r.culture_score||'','','']});
+  rows.unshift(headers);const ws=XLSX.utils.aoa_to_sheet(rows);const range=XLSX.utils.decode_range(ws['!ref']||'A1:V1');
+  for(let c=range.s.c;c<=range.e.c;c++){const cell=XLSX.utils.encode_cell({r:0,c:c});if(ws[cell])ws[cell].s={font:{bold:true,sz:11,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'4472C4'}},alignment:{horizontal:'center',vertical:'center'}}}
+  ws['!cols']=[6,8,6,10,18,10,12,12,10,13,20,30,10,8,13,8,13,8,8,10,8,8].map(w=>({wch:w}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'选中数据');XLSX.writeFile(wb,'学员数据_'+recs.length+'条_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  logHistory('批量导出','导出'+recs.length+'条');toast('已导出'+recs.length+'条');
+}
+async function batchDelete(){
+  const recs=getSelected();if(!recs.length){alert('请先勾选');return}
+  if(!confirm('删除'+recs.length+'条？移到回收站。'))return;
+  const now=new Date().toISOString();const expired=new Date(Date.now()+180*86400000).toISOString();const trash=getTrash();
+  for(const r of recs){trash.push({...r,_deleted_at:now,_expires_at:expired});await fetch(SB_URL+'/rest/v1/enroll_record?id=eq.'+r.id,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}})}
+  saveTrash(trash);clearSelect();await loadRecords();toast('已删除'+recs.length+'条');logHistory('批量删除','删除'+recs.length+'条');
+}
 
 function formatBirthday(b){
   if(!b)return'';
