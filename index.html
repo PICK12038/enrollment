@@ -7,12 +7,12 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script>
 // ═══════════ 版本控制：防微信缓存 ═══════════
-const VERSION='2026-06-03-001';
+const VERSION='2026-06-04-v2';
 const savedVer=localStorage.getItem('enrollment_version');
+localStorage.setItem('enrollment_version',VERSION);
 if(savedVer&&savedVer!==VERSION){
-  localStorage.setItem('enrollment_version',VERSION);
-  location.reload(true);
-}else{localStorage.setItem('enrollment_version',VERSION)}
+  location.replace(location.href.replace(/[?&]_t=\d+/,'')+'?_t='+Date.now());
+}
 </script>
 <style>
 :root{--bg:#F5F5F5;--white:#FFF;--text:#1F2937;--text2:#6B7280;--text3:#9CA3AF;--border:#E5E7EB;--brand:#1F2937;--blue:#2563EB;--red:#DC2626;--green:#059669}
