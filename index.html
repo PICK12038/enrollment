@@ -83,49 +83,57 @@ textarea{resize:vertical;min-height:80px;line-height:1.6}
 @media(max-width:600px){.container{border-radius:0}.section{padding:20px 20px}.header{padding:24px 20px 0}.submit-area{padding:16px 20px 24px}}
 
 /* ── 管理后台 ── */
-.admin-body{background:var(--bg);min-height:100vh;display:flex}
-.sidebar{width:200px;background:var(--white);border-right:1px solid var(--border);padding:16px 0;display:flex;flex-direction:column;flex-shrink:0}
-.sidebar .brand{padding:0 16px 16px;font-weight:700;font-size:15px;border-bottom:1px solid var(--border);margin-bottom:8px}
-.sidebar .nav-item{padding:10px 16px;font-size:14px;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:8px}
-.sidebar .nav-item.active{background:#F3F4F6;color:var(--text);font-weight:600}
-.main{flex:1;min-width:0;display:flex;flex-direction:column}
-.topbar{background:var(--white);border-bottom:1px solid var(--border);padding:0 20px;height:50px;display:flex;align-items:center;justify-content:space-between}
-.topbar .title{font-size:15px;font-weight:600}
+.admin-body{background:#F8F9FA;min-height:100vh;display:flex}
+.sidebar{width:180px;background:#fff;padding:24px 0;display:flex;flex-direction:column;flex-shrink:0}
+.sidebar .brand{padding:0 20px 20px;font-weight:600;font-size:14px;color:var(--text);letter-spacing:.5px}
+.sidebar .nav-item{padding:9px 20px;font-size:13px;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .15s;border-left:2px solid transparent}
+.sidebar .nav-item:hover{color:var(--text);background:#F8F9FA}
+.sidebar .nav-item.active{color:var(--blue);font-weight:600;background:rgba(37,99,235,.06);border-left-color:var(--blue)}
+.main{flex:1;min-width:0;display:flex;flex-direction:column;background:#F8F9FA}
+.topbar{background:#fff;padding:0 24px;height:48px;display:flex;align-items:center;justify-content:space-between}
+.topbar .title{font-size:14px;font-weight:600;color:var(--text)}
 .topbar .time{font-size:12px;color:var(--text3)}
-.content{flex:1;padding:16px 20px;overflow-y:auto}
-.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-bottom:16px}
-.stat{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center}
-.stat .label{font-size:11px;color:var(--text3);margin-bottom:2px}
-.stat .value{font-size:18px;font-weight:700}
-.toolbar{background:var(--white);border:1px solid var(--border);border-radius:8px 8px 0 0;padding:10px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.toolbar input{padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;outline:none;background:var(--bg);width:160px}
-.toolbar input:focus{border-color:var(--blue);background:var(--white)}
-.toolbar select{padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);cursor:pointer}
+.content{flex:1;padding:20px 24px;overflow-y:auto}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:10px;margin-bottom:20px}
+.stat{background:#fff;border:none;border-radius:10px;padding:12px 14px;text-align:center;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+.stat .label{font-size:11px;color:var(--text3);margin-bottom:4px;letter-spacing:.3px}
+.stat .value{font-size:20px;font-weight:600;color:var(--text)}
+.toolbar{background:#fff;border:none;border-radius:10px 10px 0 0;padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+.toolbar input{padding:7px 12px;border:1.5px solid #E8EAED;border-radius:8px;font-size:13px;outline:none;background:#F8F9FA;width:180px;transition:all .2s}
+.toolbar input:focus{border-color:var(--blue);background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,.08)}
+.toolbar select{padding:7px 10px;border:1.5px solid #E8EAED;border-radius:8px;font-size:13px;background:#F8F9FA;cursor:pointer;transition:all .2s}
+.toolbar select:focus{border-color:var(--blue)}
 .toolbar .spacer{flex:1}
-.toolbar .count{font-size:12px;color:var(--text3)}
-.toolbar button{padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--white);font-size:12px;cursor:pointer}
-.toolbar button:hover{background:#F3F4F6}
-.toolbar button.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
-.toolbar button.danger{color:var(--red)}
-.table-wrap{background:var(--white);border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;overflow-x:auto;max-height:60vh;overflow-y:auto}
+.toolbar .count{font-size:12px;color:var(--text3);font-weight:500}
+.toolbar button{padding:6px 14px;border:1.5px solid #E8EAED;border-radius:8px;background:#fff;font-size:12px;cursor:pointer;color:var(--text2);font-weight:500;transition:all .15s}
+.toolbar button:hover{background:#F8F9FA;border-color:#D1D5DB;color:var(--text)}
+.toolbar button.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.toolbar button.primary:hover{background:#1D4ED8;border-color:#1D4ED8}
+.toolbar button.danger{color:var(--red);border-color:transparent}
+.toolbar button.danger:hover{background:#FEF2F2;border-color:#FECACA}
+.table-wrap{background:#fff;border:none;border-radius:0 0 10px 10px;overflow-x:auto;max-height:62vh;overflow-y:auto;box-shadow:0 1px 2px rgba(0,0,0,.03)}
 table.admin-table{width:100%;border-collapse:collapse;font-size:12px;min-width:1400px}
-table.admin-table thead th{background:#F9FAFB;padding:8px 10px;text-align:left;font-weight:600;font-size:11px;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:1}
-table.admin-table tbody td{padding:8px 10px;border-bottom:1px solid #F3F4F6;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-table.admin-table tbody tr:hover{background:#F9FAFB}
-.empty-state{text-align:center;padding:60px 20px;color:var(--text3);font-size:14px}
-.pager{display:flex;align-items:center;justify-content:center;gap:4px;padding:12px}
-.pager button{width:28px;height:28px;border:1px solid var(--border);border-radius:4px;background:var(--white);font-size:12px;cursor:pointer}
-.pager button.current{background:var(--brand);color:#fff;border-color:var(--brand)}
+table.admin-table thead th{background:#F8F9FA;padding:10px 12px;text-align:left;font-weight:600;font-size:11px;color:var(--text3);border-bottom:2px solid #E8EAED;white-space:nowrap;position:sticky;top:0;z-index:1;text-transform:uppercase;letter-spacing:.3px}
+table.admin-table tbody td{padding:10px 12px;border-bottom:none;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--text)}
+table.admin-table tbody tr:nth-child(even){background:#FAFBFC}
+table.admin-table tbody tr:hover{background:#F0F4FF}
+.empty-state{text-align:center;padding:80px 20px;color:var(--text3);font-size:14px}
+.pager{display:flex;align-items:center;justify-content:center;gap:6px;padding:16px}
+.pager button{width:30px;height:30px;border:1.5px solid #E8EAED;border-radius:6px;background:#fff;font-size:12px;cursor:pointer;color:var(--text2);transition:all .15s}
+.pager button:hover{background:#F8F9FA;border-color:var(--blue)}
+.pager button.current{background:var(--blue);color:#fff;border-color:var(--blue)}
 .panel{display:none}.panel.active{display:block}
-.error-tag{display:inline-block;background:#FEF2F2;color:var(--red);font-size:10px;padding:1px 5px;border-radius:3px;margin-left:4px;cursor:help}
-.error-cell{background:#FFF5F5!important;position:relative}
-.error-cell::after{content:attr(data-err);position:absolute;top:-28px;left:0;background:var(--red);color:#fff;font-size:10px;padding:3px 6px;border-radius:4px;white-space:nowrap;z-index:10;opacity:0;pointer-events:none;transition:opacity .15s}
+.error-tag{display:inline-flex;align-items:center;justify-content:center;background:#FEF2F2;color:var(--red);font-size:9px;width:14px;height:14px;border-radius:50%;margin-left:4px;cursor:help;font-weight:600}
+.error-cell{background:#FFF8F8!important;position:relative}
+.error-cell::after{content:attr(data-err);position:absolute;top:-28px;left:4px;background:var(--red);color:#fff;font-size:10px;padding:3px 8px;border-radius:4px;white-space:nowrap;z-index:10;opacity:0;pointer-events:none;transition:opacity .15s}
 .error-cell:hover::after{opacity:1}
-.check-stats{display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap}
-.check-stats .stat{padding:8px 12px}
+.check-stats{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.check-stats .stat{padding:10px 14px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
 .check-stats .stat .value{font-size:18px}
 .sev-severe{color:#DC2626;font-weight:700}.sev-warn{color:#D97706;font-weight:600}.sev-info{color:#2563EB}
-@media(max-width:768px){.sidebar{display:none}.stats{grid-template-columns:repeat(3,1fr)}}
+#selectBar{display:inline-flex;gap:8px;align-items:center}
+#selectBar button{font-size:11px;padding:5px 12px}
+@media(max-width:768px){.sidebar{display:none}.stats{grid-template-columns:repeat(3,1fr)}.toolbar input{width:140px}}
 </style>
 </head>
 <body>
@@ -218,6 +226,7 @@ table.admin-table tbody tr:hover{background:#F9FAFB}
 <button onclick="clearSearch()" title="清空搜索" style="padding:4px 8px">&#x2715; 清空</button>
 <span class="spacer"></span>
 <span class="count" id="recordCount">共 0 条</span>
+<span id="selectBar" style="display:none;margin-left:12px;gap:8px;align-items:center"><span class="count" id="selectCount" style="font-weight:600;color:var(--blue)">已选0条</span><button class="primary" onclick="batchExport()" style="font-size:11px;padding:4px 10px">&#x1F4E5; 导出选中</button><button class="danger" onclick="batchDelete()" style="font-size:11px;padding:4px 10px">&#x1F5D1; 删除选中</button><button onclick="clearSelect()" style="font-size:11px;padding:4px 10px">取消选中</button></span>
 <button onclick="loadRecords()">&#x21bb; 刷新</button>
 <button class="primary" onclick="exportExcel()">&#x1F4E5; 导出Excel</button>
 <button onclick="exportJSON()">&#x1F4BE; 备份JSON</button>
@@ -369,59 +378,114 @@ function updateClock(){
   document.getElementById('liveTime').textContent=now.toLocaleString('zh-CN',{hour12:false});
 }
 
-// ═══════════ 城市数据库 + 智能搜索 ═══════════
+// ═══════════ 高性能智能搜索 ═══════════
 const CITIES=['广州','深圳','东莞','佛山','珠海','惠州','中山','江门','肇庆','汕头','潮州','揭阳','汕尾','梅州','河源','韶关','清远','云浮','茂名','湛江','阳江','北京','上海','天津','重庆','成都','武汉','长沙','南京','杭州','苏州','郑州','西安','合肥','南昌','福州','厦门','济南','青岛','沈阳','大连','长春','哈尔滨','石家庄','太原','南宁','昆明','贵阳','海口','三亚','兰州','银川','西宁','乌鲁木齐','拉萨','香港','澳门','台北'];
-
 const searchInput=document.getElementById('searchInput');
 let searchTimer=null;
+let allDataCache=null;       // 全量数据缓存
+let cacheTimestamp=0;        // 缓存时间戳
+const CACHE_TTL=10000;       // 缓存有效期 10s
+const SEARCH_DEBOUNCE=200;   // 搜索防抖 200ms
 
+// 城市建议下拉
 function showCitySuggest(q){
   const div=document.getElementById('citySuggest');
-  if(!q||q.length<1){div.style.display='none';return}
+  if(!q||q.length<1||/\d/.test(q)){div.style.display='none';return}
   const matches=CITIES.filter(c=>c.includes(q)).slice(0,8);
-  if(matches.length===0||q.length>5){div.style.display='none';return}
-  div.innerHTML=matches.map(c=>`<div style="padding:6px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f3f4f6" onmousedown="pickCity('${c}')">🏙 ${c}</div>`).join('');
+  if(!matches.length||q.length>8){div.style.display='none';return}
+  div.innerHTML=matches.map(c=>`<div style="padding:6px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f3f4f6" onmousedown="pickCity('${c}')">\u{1F3D9} ${c}</div>`).join('');
   div.style.display='block';
 }
+function pickCity(c){searchInput.value=c;document.getElementById('citySuggest').style.display='none';debounceSearch()}
+searchInput.addEventListener('input',function(){showCitySuggest(this.value.trim());debounceSearch()});
+searchInput.addEventListener('blur',function(){setTimeout(()=>document.getElementById('citySuggest').style.display='none',200)});
 
-function pickCity(c){
-  searchInput.value=c;document.getElementById('citySuggest').style.display='none';
-  debounceSearch();
+// 搜索历史记录
+const SEARCH_HIST_KEY='enrollment_search_hist';
+function saveSearchHist(q){
+  if(!q||q.length<2)return;
+  let hist=JSON.parse(localStorage.getItem(SEARCH_HIST_KEY)||'[]');
+  hist=hist.filter(h=>h!==q);hist.unshift(q);if(hist.length>20)hist.length=20;
+  localStorage.setItem(SEARCH_HIST_KEY,JSON.stringify(hist));
+}
+function getSearchHist(){try{return JSON.parse(localStorage.getItem(SEARCH_HIST_KEY)||'[]')}catch(e){return[]}}
+
+// 客户端模糊匹配（拼音首字母 + 包含 + 近似）
+function localMatch(record,keyword){
+  const k=keyword.toLowerCase();
+  const fields=[record.name,record.id_card,record.high_school,record.city,record.phone,record.father_name,record.mother_name,record.dorm_room].filter(Boolean);
+  // 精确包含
+  for(const f of fields)if(String(f).toLowerCase().includes(k))return 2;
+  // 首字母匹配（中文拼音简拼）
+  const py=getPY(String(record.name||''));
+  if(py&&py.includes(k))return 1;
+  // 近似（编辑距离）
+  for(const f of fields){
+    const s=String(f);
+    if(s.length>1&&levenshtein(s.slice(0,Math.min(6,s.length)),k)<=1)return 1;
+  }
+  return 0;
+}
+function getPY(s){
+  const map={'广':'gz','州':'z','深':'sz','圳':'z','东':'dg','莞':'g','佛':'fs','山':'s','珠':'zh','海':'h','惠':'hz','中':'zs','江':'jm','门':'m','肇':'zq','庆':'q','汕':'st','头':'t','揭':'jy','阳':'y','梅':'mz','河':'hy','源':'y','韶':'sg','关':'g','清':'qy','远':'y','云':'yf','浮':'f','茂':'mm','名':'m','湛':'zj','北':'bj','京':'j','上':'sh','天':'tj','津':'j','重':'cq','成':'cd','都':'d','武':'wh','汉':'h','长':'cs','沙':'s','南':'nj','杭':'hz','苏':'sz','郑':'zz','西':'xa','安':'a','合':'hf','肥':'f','昌':'nc','福':'fz','厦':'xm','济':'jn','青':'qd','岛':'d','沈':'sy','大':'dl','连':'l','春':'cc','哈':'heb','石':'sjz','庄':'z','太':'ty','原':'y','宁':'nn','昆':'km','贵':'gy','口':'k','兰':'lz','银':'yc','川':'c','西':'xn','鲁':'wl','齐':'m','萨':'ls','港':'xg','澳':'am'};
+  let r='';for(const c of s){if(map[c])r+=map[c];}return r;
+}
+function levenshtein(a,b){
+  if(!a.length)return b.length;if(!b.length)return a.length;
+  const m=[];for(let i=0;i<=b.length;i++){m[i]=[i];for(let j=1;j<=a.length;j++)m[i][j]=i===0?j:Math.min(m[i-1][j]+1,m[i][j-1]+1,m[i-1][j-1]+(a[j-1]===b[i-1]?0:1))}
+  return m[b.length][a.length];
 }
 
-searchInput.addEventListener('input',function(){
-  const v=this.value.trim();
-  // Show city suggestions if typing looks like a city search
-  if(v&&!/\d/.test(v))showCitySuggest(v);
-  else document.getElementById('citySuggest').style.display='none';
-  debounceSearch();
-});
-
-searchInput.addEventListener('blur',function(){
-  setTimeout(()=>document.getElementById('citySuggest').style.display='none',200);
-});
-
-function debounceSearch(){clearTimeout(searchTimer);searchTimer=setTimeout(loadRecords,300)}
-
+// 防抖搜索（200ms）
+function debounceSearch(){clearTimeout(searchTimer);searchTimer=setTimeout(smartSearch,SEARCH_DEBOUNCE)}
 function clearSearch(){
   document.getElementById('searchInput').value='';
   document.getElementById('classFilter').value='';
   document.getElementById('citySuggest').style.display='none';
-  loadRecords();
-  logHistory('清空搜索','清空搜索条件');
+  allDataCache=null;cacheTimestamp=0;
+  loadRecords();logHistory('清空搜索','清空搜索条件');
 }
 
-// 搜索自检：无结果时提示 + 保存搜索历史
-async function _loadWithFeedback(){
-  await loadRecords();
+// 智能搜索：缓存优先 + 客户端降级
+async function smartSearch(){
   const q=document.getElementById('searchInput').value.trim();
-  if(q&&allRecords.length===0){
-    document.getElementById('emptyState').innerHTML='<div style="padding:40px;color:var(--text3)">未找到匹配"<b>'+esc(q)+'</b>"的记录<br><small>试试搜姓名、城市、学校简称</small></div>';
+  const cf=document.getElementById('classFilter').value;
+  if(!q){allDataCache=null;await loadRecords();return}
+  saveSearchHist(q);
+
+  // 有缓存且未过期 → 客户端搜索（<50ms）
+  if(allDataCache&&Date.now()-cacheTimestamp<CACHE_TTL){
+    let results=allDataCache;
+    if(cf) results=results.filter(r=>r.class_type===cf);
+    const keywords=q.split(/\s+/).filter(Boolean);
+    results=results.filter(r=>keywords.some(k=>localMatch(r,k)));
+    results.sort((a,b)=>keywords.reduce((s,k)=>s+(localMatch(b,k)-localMatch(a,k)),0));
+    allRecords=results;
+    renderTable();
+    showSearchFeedback(q,results.length);
+    return;
+  }
+
+  // 无缓存 → 服务端搜索
+  try{
+    await loadRecords();
+    allDataCache=[...allRecords];cacheTimestamp=Date.now();
+    showSearchFeedback(q,allRecords.length);
+  }catch(e){console.error(e)}
+}
+
+function showSearchFeedback(q,count){
+  const empty=document.getElementById('emptyState');
+  if(count===0&&q){
+    const hist=getSearchHist().filter(h=>h!==q).slice(0,5);
+    let histHtml='';
+    if(hist.length)histHtml='<br><br><span style="font-size:12px">历史搜索：'+hist.map(h=>`<span onclick="searchInput.value='${h}';debounceSearch()" style="color:var(--blue);cursor:pointer;margin:0 4px">${h}</span>`).join('')+'</span>';
+    empty.innerHTML='<div style="padding:40px;color:var(--text3)">未找到"<b>'+esc(q)+'</b>"<br><small>检查拼写或试试搜全称/简称</small>'+histHtml+'</div>';
   }
 }
-const _origDebounce=debounceSearch;
-debounceSearch=function(){clearTimeout(searchTimer);searchTimer=setTimeout(_loadWithFeedback,300)};
+
 async function loadRecords(){
+  allDataCache=null;cacheTimestamp=0;
   try{
     const q=document.getElementById('searchInput').value.trim();
     const cf=document.getElementById('classFilter').value;
@@ -447,6 +511,7 @@ async function loadRecords(){
     allRecords=await r.json();
     if(!Array.isArray(allRecords)) allRecords=[];
     renderTable();
+    updateSelect();
   }catch(e){console.error(e)}
 }
 
@@ -470,7 +535,7 @@ function renderTable(){
   document.getElementById('recordCount').textContent='共 '+total+' 条';
 
   const thead=document.getElementById('tableHead');
-  thead.innerHTML='<tr><th>序号</th>'+TABLE_CN.map(c=>'<th>'+c+'</th>').join('')+'<th>操作</th></tr>';
+  thead.innerHTML='<tr><th><input type="checkbox" id="selectAll" onchange="toggleSelectAll()" title="全选/取消"></th><th>序号</th>'+TABLE_CN.map(c=>'<th>'+c+'</th>').join('')+'<th>操作</th></tr>';
   const tbody=document.getElementById('tableBody');
   const empty=document.getElementById('emptyState');
   if(total===0){tbody.innerHTML='';empty.style.display='block';document.getElementById('pager').innerHTML='';return}
@@ -483,7 +548,8 @@ function renderTable(){
     const errs=validateRecord(r);
     const errCols={};errs.forEach(e=>{if(!errCols[e.field])errCols[e.field]=e.msg});
         const rowIndex=allRecords.indexOf(r)+1;
-    return '<tr><td style="text-align:center">'+rowIndex+'</td>'+TABLE_COLS.map(c=>{
+    const checked=selected.has(r.id)?' checked':'';
+    return '<tr><td><input type="checkbox" class="rowCheck" value="'+r.id+'" onchange="updateSelect()"'+checked+'></td><td style="text-align:center">'+rowIndex+'</td>'+TABLE_COLS.map(c=>{
       const cnMap={name:'姓名',gender:'性别',birthday:'出生年月',class_type:'班型',high_school:'高中',city:'城市',phone:'学生电话',id_card:'身份证号',dorm_type:'宿舍房型',dorm_room:'房间号',father_phone:'父亲电话',mother_phone:'母亲电话',culture_score:'文化成绩',repeat_score:'复读分'};
       const e=errCols[cnMap[c]];
       return '<td'+(e?' class="error-cell" data-err="'+escAttr(e)+'"':'')+'>'+esc(r[c])+(e?'<span class="error-tag">!</span>':'')+'</td>';
