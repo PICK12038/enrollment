@@ -229,6 +229,7 @@ table.admin-table tbody tr:hover{background:#F0F4FF}
 <span id="selectBar" style="display:none;margin-left:12px;gap:8px;align-items:center"><span class="count" id="selectCount" style="font-weight:600;color:var(--blue)">已选0条</span><button class="primary" onclick="batchExport()" style="font-size:11px;padding:4px 10px">&#x1F4E5; 导出选中</button><button class="danger" onclick="batchDelete()" style="font-size:11px;padding:4px 10px">&#x1F5D1; 删除选中</button><button onclick="clearSelect()" style="font-size:11px;padding:4px 10px">取消选中</button></span>
 <button onclick="loadRecords()">&#x21bb; 刷新</button>
 <button class="primary" onclick="exportExcel()">&#x1F4E5; 导出Excel</button>
+<button onclick="exportTemplate()">&#x1F4CB; 导出模板</button>
 <button onclick="exportJSON()">&#x1F4BE; 备份JSON</button>
 <button class="danger" onclick="clearAll()">&#x1F5D1; 清空</button>
 </div>
@@ -266,6 +267,7 @@ table.admin-table tbody tr:hover{background:#F0F4FF}
 </div>
 
 <div class="overlay" id="editOverlay"><div class="result" style="max-width:600px"><div class="result-header"><div class="check" style="background:#EFF6FF;color:var(--blue)">&#x270E;</div><h3>修改记录</h3><p id="editId"></p></div><div class="result-body" id="editFormBody" style="max-height:60vh"></div><div class="result-footer"><button onclick="saveEdit()" style="background:var(--blue);margin-bottom:8px">保存修改</button><button onclick="closeEdit()">取消</button></div></div></div>
+<div class="overlay" id="detailOverlay"><div class="result" style="max-width:500px"><div class="result-header"><div class="check">&#x1F4CB;</div><h3 id="detailTitle">学员详情</h3></div><div class="result-body" id="detailBody" style="max-height:65vh"></div><div class="result-footer"><button onclick="closeDetail()">关闭</button></div></div></div>
 <div class="overlay" id="overlay"><div class="result"><div class="result-header"><div class="check">&#x2713;</div><h3>提交成功</h3><p>信息已记录，管理员将统一处理</p></div><div class="result-body"><table id="resultTable"></table></div><div class="result-footer"><button onclick="closeResult()">关闭</button></div></div></div>
 <div class="toast" id="toast"></div>
 
@@ -550,7 +552,7 @@ function renderTable(){
     const errCols={};errs.forEach(e=>{if(!errCols[e.field])errCols[e.field]=e.msg});
         const rowIndex=allRecords.indexOf(r)+1;
     const checked=(typeof selected!=='undefined'&&selected.has(r.id))?' checked':'';
-    return '<tr><td><input type="checkbox" class="rowCheck" value="'+r.id+'" onchange="updateSelect()"'+checked+'></td><td style="text-align:center">'+rowIndex+'</td>'+TABLE_COLS.map(c=>{
+    return '<tr style="cursor:pointer" onclick="showDetail('+r.id+')"><td onclick="event.stopPropagation()"><input type="checkbox" class="rowCheck" value="'+r.id+'" onchange="updateSelect()"'+checked+'></td><td style="text-align:center">'+rowIndex+'</td>'+TABLE_COLS.map(c=>{
       const cnMap={name:'姓名',gender:'性别',birthday:'出生年月',class_type:'班型',high_school:'高中',city:'城市',phone:'学生电话',id_card:'身份证号',dorm_type:'宿舍房型',dorm_room:'房间号',father_phone:'父亲电话',mother_phone:'母亲电话',culture_score:'文化成绩',repeat_score:'复读分'};
       const e=errCols[cnMap[c]];
       return '<td'+(e?' class="error-cell" data-err="'+escAttr(e)+'"':'')+'>'+esc(r[c])+(e?'<span class="error-tag">!</span>':'')+'</td>';
