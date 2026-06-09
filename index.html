@@ -147,7 +147,7 @@ table.admin-table tbody tr:hover{background:#F0F4FF}
 <div class="field-row"><div class="field"><label>姓名<span class="req">*</span></label><input type="text" name="name" placeholder="请输入姓名" required></div><div class="field" style="max-width:100px"><label>性别<span class="req">*</span></label><select name="gender" required><option value="">-</option><option value="男">男</option><option value="女">女</option></select></div></div>
 <div class="field"><label>出生年月<span class="req">*</span></label><input type="text" name="birthday" placeholder="如 2008年6月" required><div class="hint">格式：年份+月份，如 2008年6月</div></div>
 <div class="field-row"><div class="field"><label>文化成绩<span class="req">*</span></label><input type="text" name="culture_score" placeholder="如 350-400" required><div class="hint">填入大致分数区间即可</div></div><div class="field"><label>联考成绩<span class="opt">复读生填写</span></label><input type="text" name="repeat_score" placeholder="复读生填写"></div></div>
-<div class="field"><label>选报班级<span class="req">*</span></label><select name="class_type" required><option value="">请选择班型</option><option value="VIP">VIP</option><option value="港澳台">港澳台</option><option value="定制班">定制班</option><option value="清央国">清央国</option><option value="超能班">超能班</option><option value="超重班">超重班</option><option value="全能班">全能班</option></select></div>
+<div class="field"><label>选报班级<span class="req">*</span></label><select name="class_type" required><option value="">请选择班型</option><option value="VIP">VIP</option><option value="港澳台">港澳台</option><option value="定制班">定制班</option><option value="清央国">清央国</option><option value="超能班">超能班</option><option value="超重班">超重班</option><option value="全能班">全能班</option><option value="丰泰班">丰泰班</option></select><div style="font-size:10px;color:var(--text3);margin-top:4px">丰泰班为该校学生填写</div></div>
 </div>
 <div class="section"><div class="section-title">2. 宿舍信息</div>
 <div class="field"><label>宿舍房型<span class="req">*</span></label><select name="dorm_type" required><option value="">请选择</option><option value="2人间">2人间</option><option value="4人间">4人间</option><option value="6人间">6人间</option><option value="8人间">8人间</option></select></div>
@@ -194,6 +194,7 @@ table.admin-table tbody tr:hover{background:#F0F4FF}
 <div class="sidebar">
 <div class="brand">管理后台</div>
 <div class="nav-item active" data-panel="data" onclick="switchPanel('data')"><span>&#x1F4CB;</span> 登记数据</div>
+<div class="nav-item" data-panel="full" onclick="switchPanel('full')"><span>&#x1F50D;</span> 全部数据</div>
 <div class="nav-item" data-panel="check" onclick="switchPanel('check')"><span>&#x2705;</span> 数据校验</div>
 <div class="nav-item" data-panel="trash" onclick="switchPanel('trash')"><span>&#x1F5D1;</span> 回收站</div>
 <div class="nav-item" data-panel="history" onclick="switchPanel('history')"><span>&#x1F4C4;</span> 操作历史</div>
@@ -222,7 +223,7 @@ table.admin-table tbody tr:hover{background:#F0F4FF}
 <div class="toolbar">
 <input type="text" id="searchInput" placeholder="搜索姓名/身份证/学校/城市/电话..." oninput="debounceSearch()" autocomplete="off" style="position:relative">
 <div id="citySuggest" style="display:none;position:absolute;top:40px;left:0;background:#fff;border:1px solid var(--border);border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto;z-index:50;min-width:200px;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
-<select id="classFilter" onchange="debounceSearch()"><option value="">全部班型</option><option value="VIP">VIP</option><option value="港澳台">港澳台</option><option value="定制班">定制班</option><option value="清央国">清央国</option><option value="超能班">超能班</option><option value="超重班">超重班</option><option value="全能班">全能班</option></select>
+<select id="classFilter" onchange="debounceSearch()"><option value="">全部班型</option><option value="VIP">VIP</option><option value="港澳台">港澳台</option><option value="定制班">定制班</option><option value="清央国">清央国</option><option value="超能班">超能班</option><option value="超重班">超重班</option><option value="全能班">全能班</option><option value="丰泰班">丰泰班</option><option value="南山湖">南山湖</option></select>
 <button onclick="clearSearch()" title="清空搜索" style="padding:4px 8px">&#x2715; 清空</button>
 <span class="spacer"></span>
 <span class="count" id="recordCount">共 0 条</span>
@@ -235,6 +236,11 @@ table.admin-table tbody tr:hover{background:#F0F4FF}
 </div>
 <div class="table-wrap"><table class="admin-table"><thead id="tableHead"></thead><tbody id="tableBody"></tbody></table><div class="empty-state" id="emptyState">暂无登记数据</div></div>
 <div class="pager" id="pager"></div>
+</div>
+<!-- 全部数据面板 -->
+<div class="panel" id="panelFull">
+<div class="toolbar"><span class="count" id="fullCount">共 0 条</span><span class="spacer"></span><button onclick="refreshFull()">&#x21bb; 刷新</button><button class="primary" onclick="exportTemplate()">&#x1F4E5; 导出全部</button></div>
+<div class="table-wrap" style="max-height:70vh"><table class="admin-table"><thead id="fullHead"></thead><tbody id="fullBody"></tbody></table><div class="empty-state" id="fullEmpty">暂无数据</div></div>
 </div>
 <!-- 数据校验面板 -->
 <div class="panel" id="panelCheck">
@@ -564,6 +570,19 @@ function renderTable(){
   document.getElementById('pager').innerHTML=ph;
 }
 
+function refreshFull(){renderFullTable()}
+
+function renderFullTable(){
+  const total=allRecords.length;
+  document.getElementById('fullCount').textContent='共 '+total+' 条';
+  const thead=document.getElementById('fullHead');
+  thead.innerHTML='<tr><th>序号</th>'+TABLE_CN.map(c=>'<th>'+c+'</th>').join('')+'</tr>';
+  const tbody=document.getElementById('fullBody');
+  const empty=document.getElementById('fullEmpty');
+  if(total===0){tbody.innerHTML='';empty.style.display='block';return}
+  empty.style.display='none';
+  tbody.innerHTML=allRecords.map((r,i)=>'<tr style="cursor:pointer" onclick="showDetail('+r.id+')"><td style="text-align:center">'+(i+1)+'</td>'+TABLE_COLS.map(c=>'<td>'+esc(r[c])+'</td>').join('')+'</tr>').join('');
+}
 function goPage(p){sessionStorage.setItem('adminPage',p);renderTable()}
 
 // ═══════════ 多选功能 ═══════════
@@ -646,7 +665,7 @@ let editingRecord=null;
 const EDIT_FIELDS=[
   {label:'姓名',name:'name'},{label:'性别',name:'gender',type:'select',opts:['男','女']},
   {label:'出生年月',name:'birthday',hint:'如 2008年6月'},{label:'文化成绩',name:'culture_score'},
-  {label:'联考成绩',name:'repeat_score'},{label:'选报班级',name:'class_type',type:'select',opts:['VIP','港澳台','定制班','清央国','超能班','超重班','全能班']},
+  {label:'联考成绩',name:'repeat_score'},{label:'选报班级',name:'class_type',type:'select',opts:['VIP','港澳台','定制班','清央国','超能班','超重班','全能班','丰泰班','南山湖']},
   {label:'宿舍房型',name:'dorm_type',type:'select',opts:['2人间','4人间','6人间','8人间']},{label:'宿舍房间号',name:'dorm_room'},{label:'宿舍床位',name:'dorm_bed'},
   {label:'身份证号',name:'id_card'},{label:'学生电话',name:'phone'},
   {label:'父亲姓名',name:'father_name'},{label:'父亲电话',name:'father_phone'},{label:'母亲姓名',name:'mother_name'},{label:'母亲电话',name:'mother_phone'},
@@ -757,6 +776,7 @@ function switchPanel(name){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('panel'+name.charAt(0).toUpperCase()+name.slice(1)).classList.add('active');
   document.querySelector('.nav-item[data-panel="'+name+'"]').classList.add('active');
+  if(name==='full')renderFullTable();
   if(name==='trash')loadTrash();
   if(name==='history')loadHistory();
   if(name==='check')renderCheck();
@@ -776,7 +796,7 @@ function validateRecord(r){
   const score=(r.culture_score||'').trim();
   const rScore=(r.repeat_score||'').trim();
 
-  const VALID_CLASSES=['VIP','港澳台','定制班','清央国','超能班','超重班','全能班'];
+  const VALID_CLASSES=['VIP','港澳台','定制班','清央国','超能班','超重班','全能班','丰泰班','南山湖'];
   const VALID_DORMS=['2人间','4人间','6人间','8人间'];
   const VALID_GENDER=['男','女'];
   const MOBILE_PREFIX=/^1[3-9]\d{9}$/;
