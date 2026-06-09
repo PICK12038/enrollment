@@ -239,7 +239,7 @@ table.admin-table tbody tr:hover{background:#F0F4FF}
 </div>
 <!-- 全部数据面板 -->
 <div class="panel" id="panelFull">
-<div class="toolbar"><span class="count" id="fullCount">共 0 条</span><span class="spacer"></span><button onclick="refreshFull()">&#x21bb; 刷新</button><button class="primary" onclick="exportTemplate()">&#x1F4E5; 导出全部</button></div>
+<div class="toolbar"><span class="count" id="fullCount">共 0 条</span><span id="fullSelectBar" style="display:none;margin-left:12px;gap:8px;align-items:center"><span class="count" id="fullSelectCount" style="font-weight:600;color:var(--blue)">已选0条</span><button class="primary" onclick="batchExport()" style="font-size:11px;padding:5px 12px">&#x1F4E5; 导出选中</button><button class="danger" onclick="batchDelete()" style="font-size:11px;padding:5px 12px">&#x1F5D1; 删除选中</button><button onclick="clearFullSelect()" style="font-size:11px;padding:5px 12px">取消选中</button></span><span class="spacer"></span><button onclick="refreshFull()">&#x21bb; 刷新</button><button class="primary" onclick="exportTemplate()">&#x1F4E5; 导出全部</button></div>
 <div class="table-wrap" style="max-height:70vh"><table class="admin-table"><thead id="fullHead"></thead><tbody id="fullBody"></tbody></table><div class="empty-state" id="fullEmpty">暂无数据</div></div>
 </div>
 <!-- 数据校验面板 -->
@@ -570,18 +570,41 @@ function renderTable(){
   document.getElementById('pager').innerHTML=ph;
 }
 
-function refreshFull(){renderFullTable()}
+function refreshFull(){allDataCache=null;loadRecords().then(()=>renderFullTable())}
+function toggleFullSelectAll(){
+  const all=document.getElementById('fullSelectAll').checked;
+  document.querySelectorAll('.fullCheck').forEach(cb=>{cb.checked=all});
+  updateFullSelect();
+}
+function updateFullSelect(){
+  const fcb=document.querySelectorAll('.fullCheck');const rcb=document.querySelectorAll('.rowCheck');
+  selected=new Set();
+  fcb.forEach(cb=>{if(cb.checked)selected.add(Number(cb.value))});
+  rcb.forEach(cb=>{if(cb.checked)selected.add(Number(cb.value))});
+  const n=selected.size;
+  const bar=document.getElementById('fullSelectBar');const cnt=document.getElementById('fullSelectCount');
+  if(cnt)cnt.textContent='已选'+n+'条';if(bar)bar.style.display=n>0?'inline-flex':'none';
+  const sa=document.getElementById('fullSelectAll');if(sa)sa.checked=fcb.length>0&&n>=fcb.length;
+  const mbar=document.getElementById('selectBar');if(mbar)mbar.style.display=n>0?'inline-flex':'none';
+}
+function clearFullSelect(){
+  document.querySelectorAll('.fullCheck,.rowCheck').forEach(cb=>{cb.checked=false});
+  selected.clear();updateFullSelect();
+}
 
 function renderFullTable(){
   const total=allRecords.length;
   document.getElementById('fullCount').textContent='共 '+total+' 条';
   const thead=document.getElementById('fullHead');
-  thead.innerHTML='<tr><th>序号</th>'+TABLE_CN.map(c=>'<th>'+c+'</th>').join('')+'</tr>';
+  thead.innerHTML='<tr><th><input type="checkbox" id="fullSelectAll" onchange="toggleFullSelectAll()" title="全选/取消"></th><th>序号</th>'+TABLE_CN.map(c=>'<th>'+c+'</th>').join('')+'</tr>';
   const tbody=document.getElementById('fullBody');
   const empty=document.getElementById('fullEmpty');
   if(total===0){tbody.innerHTML='';empty.style.display='block';return}
   empty.style.display='none';
-  tbody.innerHTML=allRecords.map((r,i)=>'<tr style="cursor:pointer" onclick="showDetail('+r.id+')"><td style="text-align:center">'+(i+1)+'</td>'+TABLE_COLS.map(c=>'<td>'+esc(r[c])+'</td>').join('')+'</tr>').join('');
+  tbody.innerHTML=allRecords.map((r,i)=>{
+    const checked=selected.has(r.id)?' checked':'';
+    return '<tr style="cursor:pointer" onclick="showDetail('+r.id+')"><td onclick="event.stopPropagation()"><input type="checkbox" class="fullCheck" value="'+r.id+'" onchange="updateFullSelect()"'+checked+'></td><td style="text-align:center">'+(i+1)+'</td>'+TABLE_COLS.map(c=>'<td>'+esc(r[c])+'</td>').join('')+'</tr>';
+  }).join('');
 }
 function goPage(p){sessionStorage.setItem('adminPage',p);renderTable()}
 
