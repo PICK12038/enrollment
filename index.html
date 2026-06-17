@@ -117,6 +117,8 @@ table.admin-table thead th{background:#F8F9FA;padding:10px 12px;text-align:left;
 table.admin-table tbody td{padding:10px 12px;border-bottom:none;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--text)}
 table.admin-table tbody tr:nth-child(even){background:#FAFBFC}
 table.admin-table tbody tr:hover{background:#F0F4FF}
+table.admin-table tbody tr.row-selected{background:#DBEAFE!important}
+table.admin-table tbody tr.row-selected:nth-child(even){background:#DBEAFE!important}
 .empty-state{text-align:center;padding:80px 20px;color:var(--text3);font-size:14px}
 .pager{display:flex;align-items:center;justify-content:center;gap:6px;padding:16px}
 .pager button{width:30px;height:30px;border:1.5px solid #E8EAED;border-radius:6px;background:#fff;font-size:12px;cursor:pointer;color:var(--text2);transition:all .15s}
@@ -221,7 +223,7 @@ table.admin-table tbody tr:hover{background:#F0F4FF}
 <div class="stat"><div class="label">全能班</div><div class="value" id="statQN">0</div></div>
 </div>
 <div class="toolbar">
-<input type="text" id="searchInput" placeholder="搜索姓名/身份证/学校/城市/电话..." oninput="debounceSearch()" autocomplete="off" style="position:relative">
+<input type="text" id="searchInput" placeholder="搜姓名/城市/学校/电话/身份证/宿舍号..." oninput="debounceSearch()" autocomplete="off" style="position:relative;width:240px">
 <div id="citySuggest" style="display:none;position:absolute;top:40px;left:0;background:#fff;border:1px solid var(--border);border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto;z-index:50;min-width:200px;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
 <select id="classFilter" onchange="debounceSearch()"><option value="">全部班型</option><option value="VIP">VIP</option><option value="港澳台">港澳台</option><option value="定制班">定制班</option><option value="清央国">清央国</option><option value="超能班">超能班</option><option value="超重班">超重班</option><option value="全能班">全能班</option><option value="丰泰班">丰泰班</option><option value="南山湖">南山湖</option></select>
 <button onclick="clearSearch()" title="清空搜索" style="padding:4px 8px">&#x2715; 清空</button>
@@ -239,7 +241,7 @@ table.admin-table tbody tr:hover{background:#F0F4FF}
 </div>
 <!-- 全部数据面板 -->
 <div class="panel" id="panelFull">
-<div class="toolbar"><span class="count" id="fullCount">共 0 条</span><span id="fullSelectBar" style="display:none;margin-left:12px;gap:8px;align-items:center"><span class="count" id="fullSelectCount" style="font-weight:600;color:var(--blue)">已选0条</span><button class="primary" onclick="batchExport()" style="font-size:11px;padding:5px 12px">&#x1F4E5; 导出选中</button><button class="danger" onclick="batchDelete()" style="font-size:11px;padding:5px 12px">&#x1F5D1; 删除选中</button><button onclick="clearFullSelect()" style="font-size:11px;padding:5px 12px">取消选中</button></span><span class="spacer"></span><button onclick="refreshFull()">&#x21bb; 刷新</button><button class="primary" onclick="exportTemplate()">&#x1F4E5; 导出全部</button></div>
+<div class="toolbar"><span class="count" id="fullCount">共 0 条</span><span id="fullSelectBar" style="display:none;margin-left:12px;gap:8px;align-items:center"><span class="count" id="fullSelectCount" style="font-weight:600;color:var(--blue)">已选0条</span><button class="primary" onclick="batchExport()" style="font-size:11px;padding:5px 12px">&#x1F4E5; 导出选中</button><button class="danger" onclick="batchDelete()" style="font-size:11px;padding:5px 12px">&#x1F5D1; 删除选中</button><button onclick="clearFullSelect()" style="font-size:11px;padding:5px 12px">取消选中</button></span><span class="spacer"></span><button onclick="refreshFull()">&#x21bb; 刷新</button><button class="primary" onclick="exportFullData()">&#x1F4E5; 导出全部</button></div>
 <div class="table-wrap" style="max-height:70vh"><table class="admin-table"><thead id="fullHead"></thead><tbody id="fullBody"></tbody></table><div class="empty-state" id="fullEmpty">暂无数据</div></div>
 </div>
 <!-- 数据校验面板 -->
@@ -301,6 +303,14 @@ route();
 // ═══════════ 学生端 ═══════════
 function esc(s){const d=document.createElement('div');d.textContent=s||'-';return d.innerHTML}
 function escAttr(s){return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function formatTime(ts){
+  if(!ts)return'-';
+  try{
+    const d=new Date(ts);
+    if(!isNaN(d.getTime()))return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  }catch(e){}
+  return String(ts).slice(0,16).replace('T',' ');
+}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._tid);t._tid=setTimeout(()=>t.classList.remove('show'),2500)}
 function toggleConfirm(){const c=document.getElementById('confirmCheck');const s=document.getElementById('confirmSection');const f=document.getElementById('confirmFields');const d=document.getElementById('confirmDate');if(c.checked){s.classList.add('confirmed');f.classList.add('open');d.required=true}else{s.classList.remove('confirmed');f.classList.remove('open');d.required=false}}
 function closeResult(){document.getElementById('overlay').classList.remove('show');document.getElementById('enrollmentForm').reset();toggleConfirm();document.getElementById('confirmCheck').checked=false;clearDraft()}
@@ -557,11 +567,13 @@ function renderTable(){
     const errs=validateRecord(r);
     const errCols={};errs.forEach(e=>{if(!errCols[e.field])errCols[e.field]=e.msg});
         const rowIndex=allRecords.indexOf(r)+1;
-    const checked=(typeof selected!=='undefined'&&selected.has(r.id))?' checked':'';
-    return '<tr style="cursor:pointer" onclick="showDetail('+r.id+')"><td onclick="event.stopPropagation()"><input type="checkbox" class="rowCheck" value="'+r.id+'" onchange="updateSelect()"'+checked+'></td><td style="text-align:center">'+rowIndex+'</td>'+TABLE_COLS.map(c=>{
+    const checked=(typeof selected!=='undefined'&&selected.has(r.id));
+    const selClass=checked?' row-selected':'';
+    return '<tr class="'+selClass+'" style="cursor:pointer" onclick="showDetail('+r.id+')"><td onclick="event.stopPropagation()"><input type="checkbox" class="rowCheck" value="'+r.id+'" onchange="updateSelect()"'+(checked?' checked':'')+'></td><td style="text-align:center">'+rowIndex+'</td>'+TABLE_COLS.map((c,i)=>{
       const cnMap={name:'姓名',gender:'性别',birthday:'出生年月',class_type:'班型',high_school:'高中',city:'城市',phone:'学生电话',id_card:'身份证号',dorm_type:'宿舍房型',dorm_room:'房间号',father_phone:'父亲电话',mother_phone:'母亲电话',culture_score:'文化成绩',repeat_score:'复读分'};
       const e=errCols[cnMap[c]];
-      return '<td'+(e?' class="error-cell" data-err="'+escAttr(e)+'"':'')+'>'+esc(r[c])+(e?'<span class="error-tag">!</span>':'')+'</td>';
+      const val=c==='created_at'?formatTime(r[c]):esc(r[c]);
+      return '<td'+(e?' class="error-cell" data-err="'+escAttr(e)+'"':'')+'>'+val+(e?'<span class="error-tag">!</span>':'')+'</td>';
     }).join('')+'<td><button onclick="editRecord('+r.id+')" style="color:var(--blue);font-size:11px;padding:2px 8px;border:1px solid var(--blue);border-radius:4px;background:#fff;cursor:pointer;margin-right:4px">修改</button><button onclick="deleteOne('+r.id+')" style="color:var(--red);font-size:11px;padding:2px 8px;border:1px solid var(--red);border-radius:4px;background:#fff;cursor:pointer">删除</button></td>'+'</tr>';
   }).join('');
 
@@ -579,7 +591,10 @@ function toggleFullSelectAll(){
 function updateFullSelect(){
   const fcb=document.querySelectorAll('.fullCheck');const rcb=document.querySelectorAll('.rowCheck');
   selected=new Set();
-  fcb.forEach(cb=>{if(cb.checked)selected.add(Number(cb.value))});
+  fcb.forEach(cb=>{
+    if(cb.checked)selected.add(Number(cb.value));
+    const row=cb.closest('tr');if(row)row.classList.toggle('row-selected',cb.checked);
+  });
   rcb.forEach(cb=>{if(cb.checked)selected.add(Number(cb.value))});
   const n=selected.size;
   const bar=document.getElementById('fullSelectBar');const cnt=document.getElementById('fullSelectCount');
@@ -602,16 +617,41 @@ function renderFullTable(){
   if(total===0){tbody.innerHTML='';empty.style.display='block';return}
   empty.style.display='none';
   tbody.innerHTML=allRecords.map((r,i)=>{
-    const checked=selected.has(r.id)?' checked':'';
-    return '<tr style="cursor:pointer" onclick="showDetail('+r.id+')"><td onclick="event.stopPropagation()"><input type="checkbox" class="fullCheck" value="'+r.id+'" onchange="updateFullSelect()"'+checked+'></td><td style="text-align:center">'+(i+1)+'</td>'+TABLE_COLS.map(c=>'<td>'+esc(r[c])+'</td>').join('')+'</tr>';
+    const checked=selected.has(r.id);
+    return '<tr class="'+(checked?'row-selected':'')+'" style="cursor:pointer" onclick="showDetail('+r.id+')"><td onclick="event.stopPropagation()"><input type="checkbox" class="fullCheck" value="'+r.id+'" onchange="updateFullSelect()"'+(checked?' checked':'')+'></td><td style="text-align:center">'+(i+1)+'</td>'+TABLE_COLS.map((c,i)=>'<td>'+(c==='created_at'?formatTime(r[c]):esc(r[c]))+'</td>').join('')+'</tr>';
   }).join('');
+}
+// 全部数据独立导出（全字段原始数据，不按模板）
+function exportFullData(){
+  if(!allRecords.length){alert('暂无数据');return}
+  const headers=TABLE_CN;
+  const rows=allRecords.map((r,i)=>{
+    return TABLE_COLS.map(c=>{
+      if(c==='created_at')return formatTime(r[c]);
+      return r[c]||'';
+    });
+  });
+  rows.unshift(headers);
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  const range=XLSX.utils.decode_range(ws['!ref']||'A1');
+  for(let c=range.s.c;c<=range.e.c;c++){
+    const addr=XLSX.utils.encode_cell({r:0,c:c});
+    if(ws[addr])ws[addr].s={font:{bold:true,sz:11},fill:{fgColor:{rgb:'E8EAED'}},alignment:{horizontal:'center'}};
+  }
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'全部数据');
+  XLSX.writeFile(wb,'学员全部数据_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  logHistory('导出全部数据','导出 '+allRecords.length+' 条');
+  toast('已导出 '+allRecords.length+' 条');
 }
 function goPage(p){sessionStorage.setItem('adminPage',p);renderTable()}
 
 // ═══════════ 多选功能 ═══════════
 function updateSelect(){
   const cbs=document.querySelectorAll('.rowCheck');selected=new Set();
-  cbs.forEach(cb=>{if(cb.checked)selected.add(parseInt(cb.value))});
+  cbs.forEach(cb=>{
+    if(cb.checked)selected.add(Number(cb.value));
+    const row=cb.closest('tr');if(row)row.classList.toggle('row-selected',cb.checked);
+  });
   const n=selected.size;
   const bar=document.getElementById('selectBar');const cnt=document.getElementById('selectCount');
   cnt.textContent='已选'+n+'条';bar.style.display=n>0?'inline-flex':'none';
