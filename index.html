@@ -508,7 +508,7 @@ async function loadRecords(){
   try{
     const q=document.getElementById('searchInput').value.trim();
     const cf=document.getElementById('classFilter').value;
-    let url=SB_URL+'/rest/v1/enroll_record?select=*&order=created_at.desc&limit=500';
+    let url=SB_URL+'/rest/v1/enroll_record?select=*&order=created_at.desc&limit=1500';
     let filters=[];
     if(cf) filters.push(`class_type=eq.${encodeURIComponent(cf)}`);
     if(q){
