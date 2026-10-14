@@ -7,7 +7,7 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script>
 // ═══════════ 版本控制：防微信缓存 ═══════════
-const VERSION='2026-06-04-v2';
+const VERSION='2026-10-14-v3';
 const savedVer=localStorage.getItem('enrollment_version');
 localStorage.setItem('enrollment_version',VERSION);
 if(savedVer&&savedVer!==VERSION){
@@ -188,7 +188,7 @@ table.admin-table tbody tr.row-selected:nth-child(even){background:#DBEAFE!impor
 </div>
 <div class="submit-area"><button type="submit" class="btn-submit" id="submitBtn">提交登记</button></div>
 </form>
-<div class="footer-text">姜浩张超画室</div>
+<div class="footer-text">姜浩张超画室 · 版本 2026.10.14</div>
 </div>
 </div>
 
@@ -202,6 +202,7 @@ table.admin-table tbody tr.row-selected:nth-child(even){background:#DBEAFE!impor
 <div class="nav-item" data-panel="trash" onclick="switchPanel('trash')"><span>&#x1F5D1;</span> 回收站</div>
 <div class="nav-item" data-panel="history" onclick="switchPanel('history')"><span>&#x1F4C4;</span> 操作历史</div>
 <div class="nav-item" onclick="window.open('index.html')"><span>&#x1F4DD;</span> 学生端入口</div>
+<div style="padding:10px 16px 16px;font-size:11px;color:var(--text3);letter-spacing:.3px">版本 2026.10.14 · 含原画室导出</div>
 </div>
 <div class="main">
 <div class="topbar"><span class="title">学员登记数据</span><span class="time" id="liveTime"></span></div>
