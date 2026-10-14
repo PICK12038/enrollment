@@ -728,11 +728,11 @@ function getSelected(){return allRecords.filter(r=>selected.has(r.id))}
 
 function batchExport(){
   const recs=getSelected();if(!recs.length){alert('请先勾选');return}
-  const headers=['序号','姓名','性别','是否复读生','高中名称','城市','出生日期','入学时间','班级','联系电话','身份证号','家庭地址','复读分数','父亲姓名','联系电话','母亲姓名','联系电话','宿舍号','几人间','文化分数','变更宿舍','备注'];
-  const rows=recs.map((r,i)=>{const addr=[r.province||'',r.home_city||'',r.district||''].filter(Boolean).join('');return[i+1,r.name||'',r.gender||'',(r.repeat_score&&r.repeat_score.trim())?'是':'否',r.high_school||'',r.city||'',formatBirthday(r.birthday),r.start_date||'',r.class_type||'',r.phone||'',r.id_card||'',addr,r.repeat_score||'',r.father_name||'',r.father_phone||'',r.mother_name||'',r.mother_phone||'',r.dorm_room||'',r.dorm_type||'',r.culture_score||'','',(r.origin_studio||'').trim()]});
-  rows.unshift(headers);const ws=XLSX.utils.aoa_to_sheet(rows);const range=XLSX.utils.decode_range(ws['!ref']||'A1:V1');
+  const headers=['序号','姓名','性别','是否复读生','高中名称','城市','出生日期','入学时间','班级','原画室','联系电话','身份证号','家庭地址','复读分数','父亲姓名','联系电话','母亲姓名','联系电话','宿舍号','几人间','文化分数','变更宿舍','备注'];
+  const rows=recs.map((r,i)=>{const addr=[r.province||'',r.home_city||'',r.district||''].filter(Boolean).join('');return[i+1,r.name||'',r.gender||'',(r.repeat_score&&r.repeat_score.trim())?'是':'否',r.high_school||'',r.city||'',formatBirthday(r.birthday),r.start_date||'',r.class_type||'',(r.origin_studio||'').trim(),r.phone||'',r.id_card||'',addr,r.repeat_score||'',r.father_name||'',r.father_phone||'',r.mother_name||'',r.mother_phone||'',r.dorm_room||'',r.dorm_type||'',r.culture_score||'','',(r.origin_studio||'').trim()]});
+  rows.unshift(headers);const ws=XLSX.utils.aoa_to_sheet(rows);const range=XLSX.utils.decode_range(ws['!ref']||'A1:W1');
   for(let c=range.s.c;c<=range.e.c;c++){const cell=XLSX.utils.encode_cell({r:0,c:c});if(ws[cell])ws[cell].s={font:{bold:true,sz:11,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'4472C4'}},alignment:{horizontal:'center',vertical:'center'}}}
-  ws['!cols']=[6,8,6,10,18,10,12,12,10,13,20,30,10,8,13,8,13,8,8,10,8,8].map(w=>({wch:w}));
+  ws['!cols']=[6,8,6,10,18,10,12,12,10,16,13,20,30,10,8,13,8,13,8,8,10,8,8].map(w=>({wch:w}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'选中数据');XLSX.writeFile(wb,'学员数据_'+recs.length+'条_'+new Date().toISOString().slice(0,10)+'.xlsx');
   logHistory('批量导出','导出'+recs.length+'条');toast('已导出'+recs.length+'条');
 }
@@ -757,21 +757,21 @@ function formatBirthday(b){
 }
 async function exportExcel(){
   if(allRecords.length===0){alert('暂无数据');return}
-  const headers=['序号','姓名','性别','是否复读生','高中名称','城市','出生日期','入学时间','班级','联系电话','身份证号','家庭地址','复读分数','父亲姓名','联系电话','母亲姓名','联系电话','宿舍号','几人间','文化分数','变更宿舍','备注'];
+  const headers=['序号','姓名','性别','是否复读生','高中名称','城市','出生日期','入学时间','班级','原画室','联系电话','身份证号','家庭地址','复读分数','父亲姓名','联系电话','母亲姓名','联系电话','宿舍号','几人间','文化分数','变更宿舍','备注'];
   const rows=allRecords.map((r,i)=>{
     const addr=[r.province||'',r.home_city||'',r.district||''].filter(Boolean).join('');
     const isReread=(r.repeat_score&&r.repeat_score.trim())?'是':'否';
     const birthdayFmt=formatBirthday(r.birthday);
-    return [i+1,r.name||'',r.gender||'',isReread,r.high_school||'',r.city||'',birthdayFmt,r.start_date||'',r.class_type||'',r.phone||'',r.id_card||'',addr,r.repeat_score||'',r.father_name||'',r.father_phone||'',r.mother_name||'',r.mother_phone||'',r.dorm_room||'',r.dorm_type||'',r.culture_score||'','',(r.origin_studio||'').trim()];
+    return [i+1,r.name||'',r.gender||'',isReread,r.high_school||'',r.city||'',birthdayFmt,r.start_date||'',r.class_type||'',(r.origin_studio||'').trim(),r.phone||'',r.id_card||'',addr,r.repeat_score||'',r.father_name||'',r.father_phone||'',r.mother_name||'',r.mother_phone||'',r.dorm_room||'',r.dorm_type||'',r.culture_score||'','',(r.origin_studio||'').trim()];
   });
   rows.unshift(headers);
   const ws=XLSX.utils.aoa_to_sheet(rows);
-  const range=XLSX.utils.decode_range(ws['!ref']||'A1:V1');
+  const range=XLSX.utils.decode_range(ws['!ref']||'A1:W1');
   for(let c=range.s.c;c<=range.e.c;c++){
     const cell=XLSX.utils.encode_cell({r:0,c:c});
     if(ws[cell])ws[cell].s={font:{bold:true,sz:11,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'4472C4'}},alignment:{horizontal:'center',vertical:'center'}};
   }
-  ws['!cols']=[6,8,6,10,18,10,12,12,10,13,20,30,10,8,13,8,13,8,8,10,8,8].map(w=>({wch:w}));
+  ws['!cols']=[6,8,6,10,18,10,12,12,10,16,13,20,30,10,8,13,8,13,8,8,10,8,8].map(w=>({wch:w}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'登记数据');
   XLSX.writeFile(wb,'学员登记数据_'+new Date().toISOString().slice(0,10)+'.xlsx');
   logHistory('导出Excel','导出 '+allRecords.length+' 条记录');
