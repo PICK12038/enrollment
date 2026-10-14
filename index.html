@@ -602,7 +602,7 @@ function renderTable(){
     const checked=(typeof selected!=='undefined'&&selected.has(r.id));
     const selClass=checked?' row-selected':'';
     return '<tr class="'+selClass+'" style="cursor:pointer" onclick="showDetail('+r.id+')"><td onclick="event.stopPropagation()"><input type="checkbox" class="rowCheck" value="'+r.id+'" onchange="updateSelect()"'+(checked?' checked':'')+'></td><td style="text-align:center">'+rowIndex+'</td>'+TABLE_COLS.map((c,i)=>{
-      const cnMap={name:'姓名',gender:'性别',birthday:'出生年月',class_type:'班型',high_school:'高中',city:'城市',phone:'学生电话',id_card:'身份证号',dorm_type:'宿舍房型',dorm_room:'房间号',father_phone:'父亲电话',mother_phone:'母亲电话',culture_score:'文化成绩',repeat_score:'复读分'};
+      const cnMap={name:'姓名',gender:'性别',birthday:'出生年月',class_type:'班型',high_school:'高中',city:'城市',phone:'学生电话',id_card:'身份证号',dorm_type:'宿舍房型',dorm_room:'房间号',father_phone:'父亲电话',mother_phone:'母亲电话',culture_score:'文化成绩',repeat_score:'复读分',origin_studio:'原画室'};
       const e=errCols[cnMap[c]];
       const val=c==='created_at'?formatTime(r[c]):esc(r[c]);
       return '<td'+(e?' class="error-cell" data-err="'+escAttr(e)+'"':'')+'>'+val+(e?'<span class="error-tag">!</span>':'')+'</td>';
@@ -728,7 +728,7 @@ function getSelected(){return allRecords.filter(r=>selected.has(r.id))}
 function batchExport(){
   const recs=getSelected();if(!recs.length){alert('请先勾选');return}
   const headers=['序号','姓名','性别','是否复读生','高中名称','城市','出生日期','入学时间','班级','联系电话','身份证号','家庭地址','复读分数','父亲姓名','联系电话','母亲姓名','联系电话','宿舍号','几人间','文化分数','变更宿舍','备注'];
-  const rows=recs.map((r,i)=>{const addr=[r.province||'',r.home_city||'',r.district||''].filter(Boolean).join('');return[i+1,r.name||'',r.gender||'',(r.repeat_score&&r.repeat_score.trim())?'是':'否',r.high_school||'',r.city||'',formatBirthday(r.birthday),r.start_date||'',r.class_type||'',r.phone||'',r.id_card||'',addr,r.repeat_score||'',r.father_name||'',r.father_phone||'',r.mother_name||'',r.mother_phone||'',r.dorm_room||'',r.dorm_type||'',r.culture_score||'','','']});
+  const rows=recs.map((r,i)=>{const addr=[r.province||'',r.home_city||'',r.district||''].filter(Boolean).join('');return[i+1,r.name||'',r.gender||'',(r.repeat_score&&r.repeat_score.trim())?'是':'否',r.high_school||'',r.city||'',formatBirthday(r.birthday),r.start_date||'',r.class_type||'',r.phone||'',r.id_card||'',addr,r.repeat_score||'',r.father_name||'',r.father_phone||'',r.mother_name||'',r.mother_phone||'',r.dorm_room||'',r.dorm_type||'',r.culture_score||'','',(r.origin_studio||'').trim()]});
   rows.unshift(headers);const ws=XLSX.utils.aoa_to_sheet(rows);const range=XLSX.utils.decode_range(ws['!ref']||'A1:V1');
   for(let c=range.s.c;c<=range.e.c;c++){const cell=XLSX.utils.encode_cell({r:0,c:c});if(ws[cell])ws[cell].s={font:{bold:true,sz:11,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'4472C4'}},alignment:{horizontal:'center',vertical:'center'}}}
   ws['!cols']=[6,8,6,10,18,10,12,12,10,13,20,30,10,8,13,8,13,8,8,10,8,8].map(w=>({wch:w}));
@@ -761,7 +761,7 @@ async function exportExcel(){
     const addr=[r.province||'',r.home_city||'',r.district||''].filter(Boolean).join('');
     const isReread=(r.repeat_score&&r.repeat_score.trim())?'是':'否';
     const birthdayFmt=formatBirthday(r.birthday);
-    return [i+1,r.name||'',r.gender||'',isReread,r.high_school||'',r.city||'',birthdayFmt,r.start_date||'',r.class_type||'',r.phone||'',r.id_card||'',addr,r.repeat_score||'',r.father_name||'',r.father_phone||'',r.mother_name||'',r.mother_phone||'',r.dorm_room||'',r.dorm_type||'',r.culture_score||'','',''];
+    return [i+1,r.name||'',r.gender||'',isReread,r.high_school||'',r.city||'',birthdayFmt,r.start_date||'',r.class_type||'',r.phone||'',r.id_card||'',addr,r.repeat_score||'',r.father_name||'',r.father_phone||'',r.mother_name||'',r.mother_phone||'',r.dorm_room||'',r.dorm_type||'',r.culture_score||'','',(r.origin_studio||'').trim()];
   });
   rows.unshift(headers);
   const ws=XLSX.utils.aoa_to_sheet(rows);
