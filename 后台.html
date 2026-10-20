@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>学员登记后台 · 姜浩张超画室</title>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<!-- ⚠️ XLSX 库（约 900KB，境外 CDN）已改为「点导出时才按需加载」，不再阻塞学生端首屏 -->
 <script>
 // ═══════════ 版本控制：防微信缓存 ═══════════
-const VERSION='2026-10-14-v3';
+const VERSION='2026-10-20-v4';
 const savedVer=localStorage.getItem('enrollment_version');
 localStorage.setItem('enrollment_version',VERSION);
 if(savedVer&&savedVer!==VERSION){
@@ -188,7 +188,7 @@ table.admin-table tbody tr.row-selected:nth-child(even){background:#DBEAFE!impor
 </div>
 <div class="submit-area"><button type="submit" class="btn-submit" id="submitBtn">提交登记</button></div>
 </form>
-<div class="footer-text">姜浩张超画室 · 版本 2026.10.14</div>
+<div class="footer-text">姜浩张超画室 · 版本 2026.10.20</div>
 </div>
 </div>
 
@@ -202,7 +202,7 @@ table.admin-table tbody tr.row-selected:nth-child(even){background:#DBEAFE!impor
 <div class="nav-item" data-panel="trash" onclick="switchPanel('trash')"><span>&#x1F5D1;</span> 回收站</div>
 <div class="nav-item" data-panel="history" onclick="switchPanel('history')"><span>&#x1F4C4;</span> 操作历史</div>
 <div class="nav-item" onclick="window.open('index.html')"><span>&#x1F4DD;</span> 学生端入口</div>
-<div style="padding:10px 16px 16px;font-size:11px;color:var(--text3);letter-spacing:.3px">版本 2026.10.14 · 含原画室导出</div>
+<div style="padding:10px 16px 16px;font-size:11px;color:var(--text3);letter-spacing:.3px">版本 2026.10.20 · 断网自动补交</div>
 </div>
 <div class="main">
 <div class="topbar"><span class="title">学员登记数据</span><span class="time" id="liveTime"></span></div>
@@ -289,6 +289,120 @@ const SB_URL='https://qcvefxutsncfbhfnrczh.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjdmVmeHV0c25jZmJoZm5yY3poIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MTc4MTcsImV4cCI6MjA5NTk5MzgxN30.pjdqBGfpxR4IVSjSRf8dnMicndErvrEMK-pRY7gUQkU';
 const SB_HEADERS={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'};
 
+// ═══════════ 网络健壮性：超时 / 重试 / 断网补交 ═══════════
+// 页面在 GitHub Pages、数据库在 Supabase（Cloudflare 新加坡节点），国内弱网或部分运营商下
+// 请求会偶发失败（换网络就好）。原实现无超时无重试，网络一抖学员就得重填，故加三层兜底。
+const SB_TIMEOUT=15000;      // 单次请求超时 15 秒
+const SB_RETRY=[800,2500];   // 连接失败后的重试间隔（毫秒）
+const PENDING_KEY='enrollment_pending';
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+
+// 带超时的 fetch（不支持 AbortController 的旧环境自动降级为普通 fetch）
+function fetchTimeout(url,opts,ms){
+  ms=ms||SB_TIMEOUT;
+  if(typeof AbortController==='undefined')return fetch(url,opts);
+  const ctl=new AbortController();
+  return new Promise(function(resolve,reject){
+    const timer=setTimeout(function(){ctl.abort();reject(new Error('请求超时'))},ms);
+    fetch(url,Object.assign({},opts,{signal:ctl.signal}))
+      .then(function(r){clearTimeout(timer);resolve(r)})
+      .catch(function(e){clearTimeout(timer);reject(e)});
+  });
+}
+
+// 提交一条报名：超时 + 连接失败重试 + origin_studio 字段降级
+async function postRecord(data){
+  let lastErr='';
+  for(let i=0;i<=SB_RETRY.length;i++){
+    try{
+      let r=await fetchTimeout(SB_URL+'/rest/v1/enroll_record',{method:'POST',headers:SB_HEADERS,body:JSON.stringify(data)});
+      if(r.ok)return {ok:true};
+      const errText=await r.text();
+      // 容错：数据库若尚无 origin_studio 字段，去掉该字段重提，保证报名不丢失
+      if(/origin_studio|42703|PGRST204/i.test(errText)&&data.origin_studio!==undefined){
+        console.warn('[容错] origin_studio 字段不存在，已降级提交：',errText);
+        delete data.origin_studio;
+        r=await fetchTimeout(SB_URL+'/rest/v1/enroll_record',{method:'POST',headers:SB_HEADERS,body:JSON.stringify(data)});
+        return r.ok?{ok:true}:{ok:false,err:await r.text(),fatal:true};
+      }
+      // 4xx 属数据问题，重试无意义；5xx / 429 才重试
+      if(r.status>=400&&r.status<500&&r.status!==429)return {ok:false,err:errText,fatal:true};
+      lastErr=errText;
+    }catch(e){
+      lastErr=e&&e.message?e.message:String(e);
+      // 超时说明请求可能已到达服务器（只是响应没回来），不重试，交给补交查重处理
+      if(/超时/.test(lastErr))return {ok:false,err:lastErr,timeout:true};
+    }
+    if(i<SB_RETRY.length)await sleep(SB_RETRY[i]);
+  }
+  return {ok:false,err:lastErr};
+}
+
+// ── 断网兜底：失败的报名存本机，联网后自动补交（补交前查重，不会重复入库）──
+function getPending(){try{return JSON.parse(localStorage.getItem(PENDING_KEY)||'[]')}catch(e){return[]}}
+function setPending(a){try{localStorage.setItem(PENDING_KEY,JSON.stringify(a.slice(-30)))}catch(e){}}
+function sameRecord(a,b){return (a.name||'')===(b.name||'')&&(a.phone||'')===(b.phone||'')&&(a.class_type||'')===(b.class_type||'')}
+function enqueuePending(data){const a=getPending().filter(function(d){return !sameRecord(d,data)});a.push(Object.assign({},data,{_queued:Date.now()}));setPending(a)}
+function dequeuePending(data){setPending(getPending().filter(function(d){return !sameRecord(d,data)}))}
+
+function renderPendingTip(){
+  const n=getPending().length;
+  let el=document.getElementById('pendingTip');
+  if(!n){if(el)el.remove();return}
+  if(!el){
+    const btn=document.getElementById('submitBtn');
+    if(!btn||!btn.parentNode)return;
+    el=document.createElement('div');
+    el.id='pendingTip';
+    el.style.cssText='margin:0 0 12px;padding:10px 12px;border-radius:8px;background:#FEF3C7;color:#92400E;font-size:13px;line-height:1.6;text-align:center';
+    btn.parentNode.insertBefore(el,btn);
+  }
+  el.textContent='有 '+n+' 条报名已暂存在本机，联网后会自动补交，不用重填';
+}
+
+async function flushPending(){
+  const list=getPending();
+  if(!list.length)return;
+  const left=[];
+  for(const d of list){
+    try{
+      // 查重：同姓名 + 同电话 + 同班型 已在库里 → 视为已提交
+      const q=SB_URL+'/rest/v1/enroll_record?select=id&limit=1'
+        +'&name=eq.'+encodeURIComponent(d.name||'')
+        +'&phone=eq.'+encodeURIComponent(d.phone||'')
+        +'&class_type=eq.'+encodeURIComponent(d.class_type||'');
+      const chk=await fetchTimeout(q,{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}},8000);
+      if(chk.ok){
+        const rows=await chk.json();
+        if(Array.isArray(rows)&&rows.length)continue;
+      }
+      const payload=Object.assign({},d);delete payload._queued;
+      const res=await postRecord(payload);
+      if(!res.ok)left.push(d);
+    }catch(e){left.push(d)}
+  }
+  setPending(left);
+  if(list.length-left.length>0)toast('已自动补交 '+(list.length-left.length)+' 条报名');
+  renderPendingTip();
+}
+window.addEventListener('online',function(){toast('网络已恢复，正在补交…');flushPending()});
+
+// ── XLSX 按需加载（仅后台导出时使用，学生端首屏不再依赖境外 CDN）──
+let _xlsxPromise=null;
+function loadXLSX(){
+  if(window.XLSX)return Promise.resolve();
+  if(_xlsxPromise)return _xlsxPromise;
+  _xlsxPromise=new Promise(function(resolve,reject){
+    const s=document.createElement('script');
+    s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+    s.onload=resolve;
+    s.onerror=function(){_xlsxPromise=null;reject(new Error('表格组件加载失败，请检查网络后重试'))};
+    document.head.appendChild(s);
+  });
+  return _xlsxPromise;
+}
+
 const FIELDS=[['姓名','name'],['性别','gender'],['出生年月','birthday'],['文化成绩','culture_score'],['联考成绩','repeat_score'],['选报班级','class_type'],['原画室','origin_studio'],['宿舍房型','dorm_type'],['宿舍房间号','dorm_room'],['宿舍床位','dorm_bed'],['身份证号码','id_card'],['学生电话','phone'],['父亲姓名','father_name'],['父亲电话','father_phone'],['母亲姓名','mother_name'],['母亲电话','mother_phone'],['高中官方全名','high_school'],['所在地级市','city'],['学习时长','study_duration'],['报到日期（起）','start_date'],['报到日期（止）','end_date'],['家庭住址-省','province'],['家庭住址-市','home_city'],['家庭住址-县/区','district'],['过往病史','medical_history'],['确认人（学员）','confirm_student'],['监护人','confirm_guardian'],['确认日期','confirm_date']];
 
 const TABLE_COLS=['name','gender','birthday','class_type','origin_studio','high_school','city','phone','id_card','dorm_type','dorm_room','dorm_bed','father_name','father_phone','mother_name','mother_phone','culture_score','repeat_score','study_duration','start_date','end_date','province','home_city','district','medical_history','confirm_student','confirm_guardian','confirm_date','created_at'];
@@ -360,6 +474,8 @@ function clearDraft(){localStorage.removeItem(DRAFT_KEY)}
 document.getElementById('enrollmentForm').addEventListener('input',saveDraft);
 window.addEventListener('beforeunload',function(e){const f=document.getElementById('enrollmentForm');const a=Array.from(f.querySelectorAll('input[type=text],input[type=tel],textarea,select')).some(el=>el.value.trim());if(a){e.preventDefault();e.returnValue=''}});
 if(loadDraft())toast('已恢复上次填写的内容')
+renderPendingTip();
+setTimeout(function(){flushPending()},1200);
 
 // iOS 键盘弹出自动滚动到输入框
 document.querySelectorAll('input,textarea,select').forEach(el=>{
@@ -388,22 +504,22 @@ async function handleSubmit(e){
   const mom=(data.mother_name||'').trim()||(data.mother_phone||'').trim();
   if(!dad&&!mom){toast('请至少填写一位监护人姓名及电话');btn.disabled=false;btn.textContent='提交登记';return false}
 
-  try{
-    let r=await fetch(SB_URL+'/rest/v1/enroll_record',{method:'POST',headers:SB_HEADERS,body:JSON.stringify(data)});
-    if(!r.ok){
-      const errText=await r.text();
-      // 容错：若数据库尚无 origin_studio 字段，去掉该字段重试，保证报名不丢失
-      if(/origin_studio|42703|PGRST204/i.test(errText)&&data.origin_studio!==undefined){
-        console.warn('[容错] origin_studio 字段不存在，已降级提交：',errText);
-        delete data.origin_studio;
-        r=await fetch(SB_URL+'/rest/v1/enroll_record',{method:'POST',headers:SB_HEADERS,body:JSON.stringify(data)});
-      }
-      if(!r.ok)throw new Error(await r.text());
+  const res=await postRecord(data);
+  if(!res.ok){
+    if(res.fatal){
+      // 4xx：数据本身有问题，盲目重试没用，把原因告诉用户
+      console.error('[提交失败]',res.err);
+      toast('提交失败：'+(res.err||'').slice(0,60));
+    }else{
+      // 网络问题：先存本机，联网后自动补交，绝不丢数据
+      enqueuePending(data);
+      renderPendingTip();
+      toast('网络不稳定，资料已暂存在本机，联网后会自动补交');
     }
-  }catch(err){
-    toast('提交失败，请检查网络后重试');
-    btn.disabled=false;btn.textContent='提交登记';return false;
+    btn.disabled=false;btn.textContent='提交登记';
+    return false;
   }
+  dequeuePending(data);
 
   let html='';FIELDS.forEach(([l,k])=>{html+=`<tr><td>${l}</td><td>${esc(data[k])}</td></tr>`});
   document.getElementById('resultTable').innerHTML=html;
@@ -656,8 +772,9 @@ function renderFullTable(){
   }).join('');
 }
 // 全部数据独立导出（全字段原始数据，不按模板）
-function exportFullData(){
+async function exportFullData(){
   if(!allRecords.length){alert('暂无数据');return}
+  try{await loadXLSX()}catch(e){alert(e.message);return}
   const headers=TABLE_CN;
   const rows=allRecords.map((r,i)=>{
     return TABLE_COLS.map(c=>{
@@ -727,8 +844,9 @@ function toggleSelectAll(){
 function clearSelect(){document.querySelectorAll('.rowCheck').forEach(cb=>{cb.checked=false});selected.clear();updateSelect()}
 function getSelected(){return allRecords.filter(r=>selected.has(r.id))}
 
-function batchExport(){
+async function batchExport(){
   const recs=getSelected();if(!recs.length){alert('请先勾选');return}
+  try{await loadXLSX()}catch(e){alert(e.message);return}
   const headers=['序号','姓名','性别','是否复读生','高中名称','城市','出生日期','入学时间','班级','原画室','联系电话','身份证号','家庭地址','复读分数','父亲姓名','联系电话','母亲姓名','联系电话','宿舍号','几人间','文化分数','变更宿舍','备注'];
   const rows=recs.map((r,i)=>{const addr=[r.province||'',r.home_city||'',r.district||''].filter(Boolean).join('');return[i+1,r.name||'',r.gender||'',(r.repeat_score&&r.repeat_score.trim())?'是':'否',r.high_school||'',r.city||'',formatBirthday(r.birthday),r.start_date||'',r.class_type||'',(r.origin_studio||'').trim(),r.phone||'',r.id_card||'',addr,r.repeat_score||'',r.father_name||'',r.father_phone||'',r.mother_name||'',r.mother_phone||'',r.dorm_room||'',r.dorm_type||'',r.culture_score||'','',(r.origin_studio||'').trim()]});
   rows.unshift(headers);const ws=XLSX.utils.aoa_to_sheet(rows);const range=XLSX.utils.decode_range(ws['!ref']||'A1:W1');
@@ -758,6 +876,7 @@ function formatBirthday(b){
 }
 async function exportExcel(){
   if(allRecords.length===0){alert('暂无数据');return}
+  try{await loadXLSX()}catch(e){alert(e.message);return}
   const headers=['序号','姓名','性别','是否复读生','高中名称','城市','出生日期','入学时间','班级','原画室','联系电话','身份证号','家庭地址','复读分数','父亲姓名','联系电话','母亲姓名','联系电话','宿舍号','几人间','文化分数','变更宿舍','备注'];
   const rows=allRecords.map((r,i)=>{
     const addr=[r.province||'',r.home_city||'',r.district||''].filter(Boolean).join('');
