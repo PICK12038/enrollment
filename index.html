@@ -7,7 +7,7 @@
 <!-- ⚠️ XLSX 库（约 900KB，境外 CDN）已改为「点导出时才按需加载」，不再阻塞学生端首屏 -->
 <script>
 // ═══════════ 版本控制：防微信缓存 ═══════════
-const VERSION='2026-10-20-v4';
+const VERSION='2026-10-21-v5';
 const savedVer=localStorage.getItem('enrollment_version');
 localStorage.setItem('enrollment_version',VERSION);
 if(savedVer&&savedVer!==VERSION){
@@ -188,7 +188,7 @@ table.admin-table tbody tr.row-selected:nth-child(even){background:#DBEAFE!impor
 </div>
 <div class="submit-area"><button type="submit" class="btn-submit" id="submitBtn">提交登记</button></div>
 </form>
-<div class="footer-text">姜浩张超画室 · 版本 2026.10.20</div>
+<div class="footer-text">姜浩张超画室 · 版本 2026.10.21</div>
 </div>
 </div>
 
@@ -202,7 +202,7 @@ table.admin-table tbody tr.row-selected:nth-child(even){background:#DBEAFE!impor
 <div class="nav-item" data-panel="trash" onclick="switchPanel('trash')"><span>&#x1F5D1;</span> 回收站</div>
 <div class="nav-item" data-panel="history" onclick="switchPanel('history')"><span>&#x1F4C4;</span> 操作历史</div>
 <div class="nav-item" onclick="window.open(location.origin+location.pathname)"><span>&#x1F4DD;</span> 学生端入口</div>
-<div style="padding:10px 16px 16px;font-size:11px;color:var(--text3);letter-spacing:.3px">版本 2026.10.20 · 断网自动补交</div>
+<div style="padding:10px 16px 16px;font-size:11px;color:var(--text3);letter-spacing:.3px">版本 2026.10.21 · 原画室不再丢</div>
 </div>
 <div class="main">
 <div class="topbar"><span class="title">学员登记数据</span><span class="time" id="liveTime"></span></div>
@@ -311,6 +311,22 @@ function fetchTimeout(url,opts,ms){
   });
 }
 
+// 查最近 2 分钟内是否已有「同名 + 同电话 + 同班型」的记录（防止重试造成重复报名）
+async function existsRecent(data){
+  try{
+    const since=new Date(Date.now()-120000).toISOString();
+    const q=SB_URL+'/rest/v1/enroll_record?select=id&limit=1'
+      +'&name=eq.'+encodeURIComponent(data.name||'')
+      +'&phone=eq.'+encodeURIComponent(data.phone||'')
+      +'&class_type=eq.'+encodeURIComponent(data.class_type||'')
+      +'&created_at=gte.'+encodeURIComponent(since);
+    const r=await fetchTimeout(q,{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}},6000);
+    if(!r.ok)return false;
+    const rows=await r.json();
+    return Array.isArray(rows)&&rows.length>0;
+  }catch(e){return false}
+}
+
 // 提交一条报名：超时 + 连接失败重试 + origin_studio 字段降级
 async function postRecord(data){
   let lastErr='';
@@ -333,6 +349,8 @@ async function postRecord(data){
       lastErr=e&&e.message?e.message:String(e);
       // 超时说明请求可能已到达服务器（只是响应没回来），不重试，交给补交查重处理
       if(/超时/.test(lastErr))return {ok:false,err:lastErr,timeout:true};
+      // 连接中断：先确认上一次是否其实已写入，避免重试造成重复报名
+      if(i<SB_RETRY.length&&await existsRecent(data))return {ok:true,dedup:true};
     }
     if(i<SB_RETRY.length)await sleep(SB_RETRY[i]);
   }
@@ -440,7 +458,8 @@ function toggleOriginStudio(){
   const isJinghang=sel.value==='京杭班';
   wrap.style.display=isJinghang?'':'none';
   input.required=isJinghang;
-  if(!isJinghang)input.value='';
+  // 注意：切换班型时不再清空已填内容 —— 学生先选京杭班填了原画室、后又改选其他班，
+  // 内容必须保留并照常提交，否则学生「明明填了」后台却看不到。
 }
 function closeResult(){document.getElementById('overlay').classList.remove('show');document.getElementById('enrollmentForm').reset();toggleConfirm();document.getElementById('confirmCheck').checked=false;clearDraft()}
 
@@ -497,8 +516,8 @@ async function handleSubmit(e){
   if(data.class_type==='京杭班'&&!(data.origin_studio||'').trim()){
     toast('选报京杭班请填写原画室');btn.disabled=false;btn.textContent='提交登记';return false;
   }
-  // 非京杭班不发送 origin_studio，避免字段污染与兼容
-  if(data.class_type!=='京杭班')delete data.origin_studio;
+  // 原画室：学生填了就提交（不因班型变化而丢弃）；留空则不发送该字段，避免字段污染
+  if(!(data.origin_studio||'').trim())delete data.origin_studio;
   const dad=(data.father_name||'').trim()||(data.father_phone||'').trim();
   const mom=(data.mother_name||'').trim()||(data.mother_phone||'').trim();
   if(!dad&&!mom){toast('请至少填写一位监护人姓名及电话');btn.disabled=false;btn.textContent='提交登记';return false}
