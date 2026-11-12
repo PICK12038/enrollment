@@ -7,7 +7,7 @@
 <!-- ⚠️ XLSX 库（约 900KB，境外 CDN）已改为「点导出时才按需加载」，不再阻塞学生端首屏 -->
 <script>
 // ═══════════ 版本控制：防微信缓存 ═══════════
-const VERSION='2026-10-21-v5';
+const VERSION='2026-11-12-v6';
 const savedVer=localStorage.getItem('enrollment_version');
 localStorage.setItem('enrollment_version',VERSION);
 if(savedVer&&savedVer!==VERSION){
@@ -188,7 +188,7 @@ table.admin-table tbody tr.row-selected:nth-child(even){background:#DBEAFE!impor
 </div>
 <div class="submit-area"><button type="submit" class="btn-submit" id="submitBtn">提交登记</button></div>
 </form>
-<div class="footer-text">姜浩张超画室 · 版本 2026.10.21</div>
+<div class="footer-text">姜浩张超画室 · 版本 2026.11.12</div>
 </div>
 </div>
 
@@ -202,7 +202,7 @@ table.admin-table tbody tr.row-selected:nth-child(even){background:#DBEAFE!impor
 <div class="nav-item" data-panel="trash" onclick="switchPanel('trash')"><span>&#x1F5D1;</span> 回收站</div>
 <div class="nav-item" data-panel="history" onclick="switchPanel('history')"><span>&#x1F4C4;</span> 操作历史</div>
 <div class="nav-item" onclick="window.open(location.origin+location.pathname)"><span>&#x1F4DD;</span> 学生端入口</div>
-<div style="padding:10px 16px 16px;font-size:11px;color:var(--text3);letter-spacing:.3px">版本 2026.10.21 · 原画室不再丢</div>
+<div id="channelInfo" style="padding:10px 16px 16px;font-size:11px;color:var(--text3);letter-spacing:.3px">版本 2026.11.12</div>
 </div>
 <div class="main">
 <div class="topbar"><span class="title">学员登记数据</span><span class="time" id="liveTime"></span></div>
@@ -285,7 +285,20 @@ table.admin-table tbody tr.row-selected:nth-child(even){background:#DBEAFE!impor
 
 <script>
 // ═══════════ Supabase 配置 ═══════════
-const SB_URL='https://qcvefxutsncfbhfnrczh.supabase.co';
+// ═══════════ 数据通道配置 ═══════════
+// 直连地址：后台读取（列表 / 编辑 / 删除 / 导出）走这里
+const SB_DIRECT='https://qcvefxutsncfbhfnrczh.supabase.co';
+// 中转地址：学员提交走这里（腾讯云函数，部署后把地址填进来，结尾带 /api）
+// 留空 = 直连；填写后若中转不通，会自动降级回直连，不会把提交卡死
+const SB_PROXY='';
+const SB_URL=SB_DIRECT;
+const SB_WRITE=SB_PROXY||SB_DIRECT;
+
+// 后台左下角显示当前数据通道，方便一眼判断有没有切到中转
+window.addEventListener('DOMContentLoaded',function(){
+  const el=document.getElementById('channelInfo');
+  if(el)el.textContent='版本 2026.11.12 · '+(SB_PROXY?'通道 境内中转':'通道 直连');
+});
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjdmVmeHV0c25jZmJoZm5yY3poIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MTc4MTcsImV4cCI6MjA5NTk5MzgxN30.pjdqBGfpxR4IVSjSRf8dnMicndErvrEMK-pRY7gUQkU';
 const SB_HEADERS={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'};
 
@@ -315,7 +328,7 @@ function fetchTimeout(url,opts,ms){
 async function existsRecent(data){
   try{
     const since=new Date(Date.now()-120000).toISOString();
-    const q=SB_URL+'/rest/v1/enroll_record?select=id&limit=1'
+    const q=SB_WRITE+'/rest/v1/enroll_record?select=id&limit=1'
       +'&name=eq.'+encodeURIComponent(data.name||'')
       +'&phone=eq.'+encodeURIComponent(data.phone||'')
       +'&class_type=eq.'+encodeURIComponent(data.class_type||'')
@@ -332,14 +345,14 @@ async function postRecord(data){
   let lastErr='';
   for(let i=0;i<=SB_RETRY.length;i++){
     try{
-      let r=await fetchTimeout(SB_URL+'/rest/v1/enroll_record',{method:'POST',headers:SB_HEADERS,body:JSON.stringify(data)});
+      let r=await fetchTimeout(SB_WRITE+'/rest/v1/enroll_record',{method:'POST',headers:SB_HEADERS,body:JSON.stringify(data)});
       if(r.ok)return {ok:true};
       const errText=await r.text();
       // 容错：数据库若尚无 origin_studio 字段，去掉该字段重提，保证报名不丢失
       if(/origin_studio|42703|PGRST204/i.test(errText)&&data.origin_studio!==undefined){
         console.warn('[容错] origin_studio 字段不存在，已降级提交：',errText);
         delete data.origin_studio;
-        r=await fetchTimeout(SB_URL+'/rest/v1/enroll_record',{method:'POST',headers:SB_HEADERS,body:JSON.stringify(data)});
+        r=await fetchTimeout(SB_WRITE+'/rest/v1/enroll_record',{method:'POST',headers:SB_HEADERS,body:JSON.stringify(data)});
         return r.ok?{ok:true}:{ok:false,err:await r.text(),fatal:true};
       }
       // 4xx 属数据问题，重试无意义；5xx / 429 才重试
@@ -353,6 +366,13 @@ async function postRecord(data){
       if(i<SB_RETRY.length&&await existsRecent(data))return {ok:true,dedup:true};
     }
     if(i<SB_RETRY.length)await sleep(SB_RETRY[i]);
+  }
+  // 中转通道全部失败时，最后再试一次直连 —— 避免中转本身故障导致报名彻底交不出去
+  if(SB_WRITE!==SB_URL){
+    try{
+      const r=await fetchTimeout(SB_URL+'/rest/v1/enroll_record',{method:'POST',headers:SB_HEADERS,body:JSON.stringify(data)},SB_TIMEOUT);
+      if(r.ok){console.warn('[通道] 中转不通，已由直连提交成功');return {ok:true,via:'direct'};}
+    }catch(e){}
   }
   return {ok:false,err:lastErr};
 }
@@ -386,7 +406,7 @@ async function flushPending(){
   for(const d of list){
     try{
       // 查重：同姓名 + 同电话 + 同班型 已在库里 → 视为已提交
-      const q=SB_URL+'/rest/v1/enroll_record?select=id&limit=1'
+      const q=SB_WRITE+'/rest/v1/enroll_record?select=id&limit=1'
         +'&name=eq.'+encodeURIComponent(d.name||'')
         +'&phone=eq.'+encodeURIComponent(d.phone||'')
         +'&class_type=eq.'+encodeURIComponent(d.class_type||'');
