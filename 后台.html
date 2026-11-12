@@ -7,7 +7,7 @@
 <!-- ⚠️ XLSX 库（约 900KB，境外 CDN）已改为「点导出时才按需加载」，不再阻塞学生端首屏 -->
 <script>
 // ═══════════ 版本控制：防微信缓存 ═══════════
-const VERSION='2026-11-12-v6';
+const VERSION='2026-11-12-v7';
 const savedVer=localStorage.getItem('enrollment_version');
 localStorage.setItem('enrollment_version',VERSION);
 if(savedVer&&savedVer!==VERSION){
@@ -290,7 +290,7 @@ table.admin-table tbody tr.row-selected:nth-child(even){background:#DBEAFE!impor
 const SB_DIRECT='https://qcvefxutsncfbhfnrczh.supabase.co';
 // 中转地址：学员提交走这里（腾讯云函数，部署后把地址填进来，结尾带 /api）
 // 留空 = 直连；填写后若中转不通，会自动降级回直连，不会把提交卡死
-const SB_PROXY='';
+const SB_PROXY='https://enrollment-proxy-d5equcw5f88304a.service.tcloudbase.com/api';
 const SB_URL=SB_DIRECT;
 const SB_WRITE=SB_PROXY||SB_DIRECT;
 
@@ -355,8 +355,13 @@ async function postRecord(data){
         r=await fetchTimeout(SB_WRITE+'/rest/v1/enroll_record',{method:'POST',headers:SB_HEADERS,body:JSON.stringify(data)});
         return r.ok?{ok:true}:{ok:false,err:await r.text(),fatal:true};
       }
-      // 4xx 属数据问题，重试无意义；5xx / 429 才重试
-      if(r.status>=400&&r.status<500&&r.status!==429)return {ok:false,err:errText,fatal:true};
+      // 4xx 属数据问题，重试无意义
+      if(r.status>=400&&r.status<500&&r.status!==429){
+        // 若走的是中转，可能是中转没开通 / 路径没配好（例如 423 HTTPSERVICE_NONACTIVATED），
+        // 这种情况不能直接判失败，要留到循环结束后由直连兜底再试一次
+        if(SB_WRITE!==SB_URL){lastErr=errText;break;}
+        return {ok:false,err:errText,fatal:true};
+      }
       lastErr=errText;
     }catch(e){
       lastErr=e&&e.message?e.message:String(e);
