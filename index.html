@@ -7,7 +7,7 @@
 <!-- ⚠️ XLSX 库（约 900KB，境外 CDN）已改为「点导出时才按需加载」，不再阻塞学生端首屏 -->
 <script>
 // ═══════════ 版本控制：防微信缓存 ═══════════
-const VERSION='2026-11-12-v9';
+const VERSION='2026-11-16-v10';
 const savedVer=localStorage.getItem('enrollment_version');
 localStorage.setItem('enrollment_version',VERSION);
 if(savedVer&&savedVer!==VERSION){
@@ -188,7 +188,7 @@ table.admin-table tbody tr.row-selected:nth-child(even){background:#DBEAFE!impor
 </div>
 <div class="submit-area"><button type="submit" class="btn-submit" id="submitBtn">提交登记</button></div>
 </form>
-<div class="footer-text">姜浩张超画室 · 版本 2026.11.12</div>
+<div class="footer-text">姜浩张超画室 · 版本 2026.11.16</div>
 </div>
 </div>
 
@@ -202,7 +202,7 @@ table.admin-table tbody tr.row-selected:nth-child(even){background:#DBEAFE!impor
 <div class="nav-item" data-panel="trash" onclick="switchPanel('trash')"><span>&#x1F5D1;</span> 回收站</div>
 <div class="nav-item" data-panel="history" onclick="switchPanel('history')"><span>&#x1F4C4;</span> 操作历史</div>
 <div class="nav-item" onclick="window.open(location.origin+location.pathname)"><span>&#x1F4DD;</span> 学生端入口</div>
-<div id="channelInfo" style="padding:10px 16px 16px;font-size:11px;color:var(--text3);letter-spacing:.3px">版本 2026.11.12</div>
+<div id="channelInfo" style="padding:10px 16px 16px;font-size:11px;color:var(--text3);letter-spacing:.3px">版本 2026.11.16</div>
 </div>
 <div class="main">
 <div class="topbar"><span class="title">学员登记数据</span><span class="time" id="liveTime"></span></div>
@@ -297,7 +297,7 @@ const SB_WRITE=SB_PROXY||SB_DIRECT;
 // 后台左下角显示当前数据通道，方便一眼判断有没有切到中转
 window.addEventListener('DOMContentLoaded',function(){
   const el=document.getElementById('channelInfo');
-  if(el)el.textContent='版本 2026.11.12 · '+(SB_PROXY?'通道 境内中转':'通道 直连');
+  if(el)el.textContent='版本 2026.11.16 · '+(SB_PROXY?'通道 境内中转':'通道 直连');
 });
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjdmVmeHV0c25jZmJoZm5yY3poIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MTc4MTcsImV4cCI6MjA5NTk5MzgxN30.pjdqBGfpxR4IVSjSRf8dnMicndErvrEMK-pRY7gUQkU';
 const SB_HEADERS={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'};
@@ -890,11 +890,11 @@ function getSelected(){return allRecords.filter(r=>selected.has(r.id))}
 async function batchExport(){
   const recs=getSelected();if(!recs.length){alert('请先勾选');return}
   try{await loadXLSX()}catch(e){alert(e.message);return}
-  const headers=['序号','姓名','性别','是否复读生','高中名称','城市','出生日期','入学时间','班级','原画室','联系电话','身份证号','家庭地址','复读分数','父亲姓名','联系电话','母亲姓名','联系电话','宿舍号','几人间','文化分数','变更宿舍','备注'];
-  const rows=recs.map((r,i)=>{const addr=[r.province||'',r.home_city||'',r.district||''].filter(Boolean).join('');return[i+1,r.name||'',r.gender||'',(r.repeat_score&&r.repeat_score.trim())?'是':'否',r.high_school||'',r.city||'',formatBirthday(r.birthday),r.start_date||'',r.class_type||'',(r.origin_studio||'').trim(),r.phone||'',r.id_card||'',addr,r.repeat_score||'',r.father_name||'',r.father_phone||'',r.mother_name||'',r.mother_phone||'',r.dorm_room||'',r.dorm_type||'',r.culture_score||'','',(r.origin_studio||'').trim()]});
-  rows.unshift(headers);const ws=XLSX.utils.aoa_to_sheet(rows);const range=XLSX.utils.decode_range(ws['!ref']||'A1:W1');
+  const headers=['序号','姓名','性别','是否复读生','高中名称','城市','出生日期','入学时间','班级','联系电话','身份证号','家庭地址','复读分数','父亲姓名','联系电话','母亲姓名','联系电话','宿舍号','几人间','文化分数','变更宿舍','备注'];
+  const rows=recs.map((r,i)=>{const addr=[r.province||'',r.home_city||'',r.district||''].filter(Boolean).join('');return[i+1,r.name||'',r.gender||'',(r.repeat_score&&r.repeat_score.trim())?'是':'否',r.high_school||'',r.city||'',formatBirthday(r.birthday),r.start_date||'',r.class_type||'',r.phone||'',r.id_card||'',addr,r.repeat_score||'',r.father_name||'',r.father_phone||'',r.mother_name||'',r.mother_phone||'',r.dorm_room||'',r.dorm_type||'',r.culture_score||'','',(r.origin_studio||'').trim()]});
+  rows.unshift(headers);const ws=XLSX.utils.aoa_to_sheet(rows);const range=XLSX.utils.decode_range(ws['!ref']||'A1:V1');
   for(let c=range.s.c;c<=range.e.c;c++){const cell=XLSX.utils.encode_cell({r:0,c:c});if(ws[cell])ws[cell].s={font:{bold:true,sz:11,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'4472C4'}},alignment:{horizontal:'center',vertical:'center'}}}
-  ws['!cols']=[6,8,6,10,18,10,12,12,10,16,13,20,30,10,8,13,8,13,8,8,10,8,8].map(w=>({wch:w}));
+  ws['!cols']=[6,8,6,10,18,10,12,12,10,13,20,30,10,8,13,8,13,8,8,10,8,8].map(w=>({wch:w}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'选中数据');XLSX.writeFile(wb,'学员数据_'+recs.length+'条_'+new Date().toISOString().slice(0,10)+'.xlsx');
   logHistory('批量导出','导出'+recs.length+'条');toast('已导出'+recs.length+'条');
 }
@@ -920,21 +920,21 @@ function formatBirthday(b){
 async function exportExcel(){
   if(allRecords.length===0){alert('暂无数据');return}
   try{await loadXLSX()}catch(e){alert(e.message);return}
-  const headers=['序号','姓名','性别','是否复读生','高中名称','城市','出生日期','入学时间','班级','原画室','联系电话','身份证号','家庭地址','复读分数','父亲姓名','联系电话','母亲姓名','联系电话','宿舍号','几人间','文化分数','变更宿舍','备注'];
+  const headers=['序号','姓名','性别','是否复读生','高中名称','城市','出生日期','入学时间','班级','联系电话','身份证号','家庭地址','复读分数','父亲姓名','联系电话','母亲姓名','联系电话','宿舍号','几人间','文化分数','变更宿舍','备注'];
   const rows=allRecords.map((r,i)=>{
     const addr=[r.province||'',r.home_city||'',r.district||''].filter(Boolean).join('');
     const isReread=(r.repeat_score&&r.repeat_score.trim())?'是':'否';
     const birthdayFmt=formatBirthday(r.birthday);
-    return [i+1,r.name||'',r.gender||'',isReread,r.high_school||'',r.city||'',birthdayFmt,r.start_date||'',r.class_type||'',(r.origin_studio||'').trim(),r.phone||'',r.id_card||'',addr,r.repeat_score||'',r.father_name||'',r.father_phone||'',r.mother_name||'',r.mother_phone||'',r.dorm_room||'',r.dorm_type||'',r.culture_score||'','',(r.origin_studio||'').trim()];
+    return [i+1,r.name||'',r.gender||'',isReread,r.high_school||'',r.city||'',birthdayFmt,r.start_date||'',r.class_type||'',r.phone||'',r.id_card||'',addr,r.repeat_score||'',r.father_name||'',r.father_phone||'',r.mother_name||'',r.mother_phone||'',r.dorm_room||'',r.dorm_type||'',r.culture_score||'','',(r.origin_studio||'').trim()];
   });
   rows.unshift(headers);
   const ws=XLSX.utils.aoa_to_sheet(rows);
-  const range=XLSX.utils.decode_range(ws['!ref']||'A1:W1');
+  const range=XLSX.utils.decode_range(ws['!ref']||'A1:V1');
   for(let c=range.s.c;c<=range.e.c;c++){
     const cell=XLSX.utils.encode_cell({r:0,c:c});
     if(ws[cell])ws[cell].s={font:{bold:true,sz:11,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'4472C4'}},alignment:{horizontal:'center',vertical:'center'}};
   }
-  ws['!cols']=[6,8,6,10,18,10,12,12,10,16,13,20,30,10,8,13,8,13,8,8,10,8,8].map(w=>({wch:w}));
+  ws['!cols']=[6,8,6,10,18,10,12,12,10,13,20,30,10,8,13,8,13,8,8,10,8,8].map(w=>({wch:w}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'登记数据');
   XLSX.writeFile(wb,'学员登记数据_'+new Date().toISOString().slice(0,10)+'.xlsx');
   logHistory('导出Excel','导出 '+allRecords.length+' 条记录');
